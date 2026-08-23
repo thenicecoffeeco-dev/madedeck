@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "products": {
+    "tee": {"colors":["white","black","red","pink","gray","heather-gray","sky-blue","dark-blue","green","yellow"],"views":["front","back","left-sleeve","right-sleeve"],"pattern":"/mockups/tee/{view}-{color}.png"},
+    "hoodie": {"colors":["black","white","gray","red"],"views":["front","back","left-sleeve","right-sleeve"],"pattern":"/mockups/hoodie/{view}-{color}.png"},
+    "polo": {"colors":["white","black","gray","dark-blue","red"],"views":["front","back","left-sleeve","right-sleeve"],"pattern":"/mockups/polo/{view}-{color}.png"},
+    "hat": {"pattern":"/mockups/hat/front-{color}.png"},
+    "koozie": {"pattern":"/mockups/koozie/front-{color}.png"},
+    "towel": {"pattern":"/mockups/towel/front-{color}.png"},
+    "sticker": {"pattern":"/mockups/sticker/{size}.png"}
+  }
+}
