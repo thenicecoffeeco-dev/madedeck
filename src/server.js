@@ -12,8 +12,8 @@ app.use(cookieParser());
 app.get('/',(req,res)=>{
   try{
     const html=fs.readFileSync(path.join(publicDir,'index.html'),'utf8')
-      .replace('href="/styles.css"','href="/styles.css?v=0.3.1"')
-      .replace('src="/app.js"','src="/app.js?v=0.3.1"');
+      .replace('href="/styles.css"','href="/styles.css?v=0.4.0"')
+      .replace('src="/app.js"','src="/app.js?v=0.4.0"');
     res.set('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma','no-cache');
     res.set('Expires','0');
@@ -21,7 +21,7 @@ app.get('/',(req,res)=>{
   }catch(e){res.status(500).send('MadeDeck frontend unavailable');}
 });
 app.use(express.static(publicDir,{setHeaders:(res,filePath)=>{
-  if(filePath.endsWith('.css')||filePath.endsWith('.js')||filePath.endsWith('.html')){
+  if(filePath.endsWith('.css')||filePath.endsWith('.js')||filePath.endsWith('.html')||filePath.endsWith('.json')){
     res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma','no-cache');
     res.setHeader('Expires','0');
@@ -30,7 +30,7 @@ app.use(express.static(publicDir,{setHeaders:(res,filePath)=>{
 const sessions=new Map();
 function session(req){const token=req.cookies.md_session;return token?sessions.get(token):null;}
 function requireUser(req,res,next){const s=session(req);if(!s)return res.status(401).json({ok:false,error:'login_required'});req.user=s;next();}
-app.get('/health',async(req,res)=>{try{await db().query('SELECT 1');res.json({ok:true,mode:'database',database:'connected',version:'0.3.1'});}catch(e){res.status(503).json({ok:false,database:'disconnected',error:e.message});}});
+app.get('/health',async(req,res)=>{try{await db().query('SELECT 1');res.json({ok:true,mode:'database',database:'connected',version:'0.4.0'});}catch(e){res.status(503).json({ok:false,database:'disconnected',error:e.message});}});
 app.post('/api/auth/login',async(req,res)=>{const email=String(req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const [rows]=await db().execute('SELECT id,email,password_salt,password_hash,role,status FROM users WHERE email=? LIMIT 1',[email]);const u=rows[0];if(!u||u.status!=='active'||!verifyPassword(password,u.password_salt,u.password_hash))return res.status(401).json({ok:false,error:'invalid_credentials'});const token=crypto.randomBytes(32).toString('hex');sessions.set(token,{id:u.id,email:u.email,role:u.role});res.cookie('md_session',token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',maxAge:1000*60*60*12});res.json({ok:true,user:{email:u.email,role:u.role}});});
 app.post('/api/auth/logout',(req,res)=>{if(req.cookies.md_session)sessions.delete(req.cookies.md_session);res.clearCookie('md_session');res.json({ok:true});});
 app.get('/api/me',requireUser,(req,res)=>res.json({ok:true,user:req.user}));
