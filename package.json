@@ -1,8 +1,8 @@
 {
   "name": "madedeck",
-  "version": "0.3.0",
+  "version": "0.6.0",
   "private": true,
-  "description": "MadeDeck multi-tenant merch storefront and fulfillment SaaS",
+  "description": "MadeDeck multi-tenant merch storefront, preorder, payments and fulfillment platform",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
