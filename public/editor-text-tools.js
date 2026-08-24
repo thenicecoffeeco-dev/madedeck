@@ -69,6 +69,14 @@
     };
     wrapped.__textPathWrapped = true;
     window.mdBuildProductionPayload = wrapped;
+    const originalFormData = window.mdBuildProductionFormData;
+    if (typeof originalFormData === 'function' && !originalFormData.__textPathWrapped) {
+      const wrappedFormData = function (payload) {
+        return originalFormData(payload || window.mdBuildProductionPayload());
+      };
+      wrappedFormData.__textPathWrapped = true;
+      window.mdBuildProductionFormData = wrappedFormData;
+    }
   }
 
   function install() {
@@ -92,4 +100,3 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
   else install();
 }());
-
