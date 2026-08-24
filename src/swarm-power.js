@@ -11,7 +11,7 @@ function createSwarmPowerRouter({ db, session }) {
   const router = express.Router();
 
   async function requireVinny(req, res, next) {
-    const current = session(req);
+    const current = await session(req);
     const ownerEmail = cleanEmail(process.env.VINNY_OWNER_EMAIL);
     if (!current) return res.status(401).json({ ok: false, error: 'login_required' });
     if (!ownerEmail) return res.status(503).json({ ok: false, error: 'vinny_owner_not_configured' });
