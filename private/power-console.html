@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MadeDeck Power Console</title>
+  <link rel="stylesheet" href="/power-console.css">
+  <style>
+    .action-picker{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+    .action-pill,.action-picker select{border:1px solid var(--line);background:#101825;color:#dbe6f4;border-radius:999px;padding:8px 12px;font-weight:700}
+    .action-pill{cursor:pointer}.action-pill:hover,.action-pill.active{border-color:var(--accent);background:rgba(113,167,255,.12)}
+    .help-tip{position:relative;display:inline-grid;place-items:center;width:20px;height:20px;border:1px solid #43516a;border-radius:50%;color:#b8c5d8;font-size:11px;cursor:help;vertical-align:middle}
+    [data-tip]{position:relative}
+    [data-tip]:hover:after,[data-tip]:focus-visible:after{content:attr(data-tip);position:absolute;z-index:60;left:0;top:calc(100% + 9px);width:min(290px,70vw);padding:10px 12px;border:1px solid #43516a;border-radius:10px;background:#080c12;color:#dce6f3;font-size:11px;font-weight:500;line-height:1.45;box-shadow:0 16px 40px rgba(0,0,0,.4)}
+    .help-tip[data-tip]:hover:after{left:auto;right:0}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span>M</span>MadeDeck Power</a>
+    <div class="owner">VINNY-ONLY CONTROL PLANE</div>
+  </header>
+  <main>
+    <section class="command-shell">
+      <form id="commandForm">
+        <input id="commandInput" autocomplete="off" placeholder="Ask, command, search databases, or get help…">
+        <button type="submit">Run</button>
+      </form>
+      <div class="quick-actions">
+        <button data-command="new-mission" data-tip="Start with a goal and let Taskmaster assemble the smallest qualified crew.">New mission</button>
+        <button data-command="gather-leads" data-tip="Search approved public sources by industry, location, signal, or campaign target.">Gather leads</button>
+        <button data-command="digest-leads" data-tip="Import, map, normalize, deduplicate, segment, and route an external lead list.">Digest leads</button>
+        <button data-command="decision-inbox" data-tip="Review approvals, conflicts, pricing choices, and external actions waiting for you.">Decisions</button>
+        <button data-command="help" data-tip="Search instructions, FAQs, bots, previous missions, exports, and troubleshooting.">Help / FAQ</button>
+      </div>
+      <div class="action-picker" aria-label="Premade Swarm actions">
+        <span>Activate Swarm:</span>
+        <button class="action-pill active" data-action="enrich">Enrich leads</button>
+        <button class="action-pill" data-action="qualify">Qualify & rank</button>
+        <button class="action-pill" data-action="outreach">Generate outreach</button>
+        <button class="action-pill" data-action="campaign">Market MadeDeck</button>
+        <select id="actionSelect" aria-label="More premade Swarm actions">
+          <option value="">More actions…</option>
+          <option value="war-room">Build War Room packets</option>
+          <option value="calling">Prepare for calling</option>
+          <option value="content">Create content package</option>
+          <option value="proposal">Generate proposals</option>
+          <option value="full-prospect">Create full prospect package</option>
+          <option value="custom">Custom mission…</option>
+        </select>
+        <span class="help-tip" data-tip="Pills load a governed mission template. Taskmaster verifies inputs, fills research gaps, selects bots, estimates cost, and previews the mission before anything runs.">?</span>
+      </div>
+      <p id="commandStatus" class="status-line">Ready for a command.</p>
+    </section>
+
+    <section class="metrics" aria-label="Swarm summary">
+      <article><span>Bots available</span><strong id="botCount">—</strong></article>
+      <article><span>Active missions</span><strong id="missionCount">—</strong></article>
+      <article><span>Needs Vinny</span><strong id="approvalCount">—</strong></article>
+    </section>
+
+    <section class="section-head">
+      <div><span class="eyebrow">LIVE WORKFORCE</span><h1>Swarm Control <span class="help-tip" data-tip="This map shows operator-facing bots. Background identity, evidence, governance, QA, audit, and recovery functions remain active without cluttering the screen.">?</span></h1></div>
+      <div class="legend"><span class="dot active"></span>Enabled <span class="dot partial"></span>Partial <span class="dot blocked"></span>Blocked</div>
+    </section>
+
+    <section id="swarmMap" class="swarm-map" aria-live="polite">
+      <div class="core-node"><span>MISSION CORE</span><strong>Taskmaster</strong><small>Routes the smallest qualified crew</small></div>
+      <div id="botGrid" class="bot-grid"></div>
+    </section>
+  </main>
+  <script src="/power-console.js"></script>
+</body>
+</html>
