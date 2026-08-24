@@ -59,3 +59,11 @@ Lead/scraping functions follow the same rule: direct operator routes and Taskmas
 - The browser remains sRGB. Production color conversion runs on the backend against the printer's required CMYK/ICC profile.
 - Generic CMYK conversion is not presented as printer-accurate proofing. Printer/profile identity is recorded in the production packet.
 - Output preflight verifies pixel dimensions, physical dimensions, bleed, color profile, transparency, bounds, fonts, source resolution and artifact creation.
+
+## Typography and text paths
+
+- The editor exposes a categorized font library with modern, condensed, serif, script, display, athletic and monospace families.
+- Every production font must be licensed for the intended use and installed or embedded in the backend renderer; a browser fallback font cannot silently reach production.
+- Text supports straight, upward arch, downward arch and full-circle formations with adjustable curvature and letter spacing.
+- Curved text remains editable in the design document and exports as SVG/PDF text-on-path or outlined vector geometry according to the printer contract.
+- Production preflight blocks an export when its exact font revision cannot be resolved or embedded.
