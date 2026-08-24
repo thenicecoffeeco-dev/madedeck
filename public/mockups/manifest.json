@@ -1,12 +1,143 @@
 {
-  "version": "1.0",
+  "version": "2.0",
+  "assetStandard": {
+    "format": "png",
+    "background": "transparent",
+    "canvas": {
+      "width": 1600,
+      "height": 2000
+    },
+    "naming": "{view}-{color}.png",
+    "requiredDpiForPrint": 300
+  },
   "products": {
-    "tee": {"colors":["white","black","red","pink","gray","heather-gray","sky-blue","dark-blue","green","yellow"],"views":["front","back","left-sleeve","right-sleeve"],"pattern":"/mockups/tee/{view}-{color}.png"},
-    "hoodie": {"colors":["black","white","gray","red"],"views":["front","back","left-sleeve","right-sleeve"],"pattern":"/mockups/hoodie/{view}-{color}.png"},
-    "polo": {"colors":["white","black","gray","dark-blue","red"],"views":["front","back","left-sleeve","right-sleeve"],"pattern":"/mockups/polo/{view}-{color}.png"},
-    "hat": {"pattern":"/mockups/hat/front-{color}.png"},
-    "koozie": {"pattern":"/mockups/koozie/front-{color}.png"},
-    "towel": {"pattern":"/mockups/towel/front-{color}.png"},
-    "sticker": {"pattern":"/mockups/sticker/{size}.png"}
+    "tee": {
+      "colors": [
+        "white",
+        "black",
+        "red",
+        "pink",
+        "gray",
+        "heather-gray",
+        "sky-blue",
+        "dark-blue",
+        "green",
+        "yellow"
+      ],
+      "views": [
+        "front",
+        "back",
+        "left-sleeve",
+        "right-sleeve"
+      ],
+      "pattern": "/mockups/tee/{view}-{color}.png",
+      "aliases": {
+        "chest": "front",
+        "lchest": "front",
+        "rchest": "front",
+        "lsleeve": "left-sleeve",
+        "rsleeve": "right-sleeve"
+      }
+    },
+    "hoodie": {
+      "colors": [
+        "black",
+        "white",
+        "gray",
+        "red"
+      ],
+      "views": [
+        "front",
+        "back",
+        "left-sleeve",
+        "right-sleeve"
+      ],
+      "pattern": "/mockups/hoodie/{view}-{color}.png",
+      "aliases": {
+        "chest": "front",
+        "lsleeve": "left-sleeve",
+        "rsleeve": "right-sleeve"
+      }
+    },
+    "polo": {
+      "colors": [
+        "white",
+        "black",
+        "gray",
+        "dark-blue",
+        "red"
+      ],
+      "views": [
+        "front",
+        "back",
+        "left-sleeve",
+        "right-sleeve"
+      ],
+      "pattern": "/mockups/polo/{view}-{color}.png",
+      "aliases": {
+        "lchest": "front",
+        "rchest": "front",
+        "neck": "back",
+        "lsleeve": "left-sleeve",
+        "rsleeve": "right-sleeve"
+      }
+    },
+    "hat": {
+      "colors": [
+        "black",
+        "white",
+        "gray",
+        "red"
+      ],
+      "views": [
+        "front"
+      ],
+      "pattern": "/mockups/hat/{view}-{color}.png"
+    },
+    "koozie": {
+      "colors": [
+        "red",
+        "black",
+        "white",
+        "gray",
+        "sky-blue",
+        "dark-blue",
+        "pink",
+        "green",
+        "yellow"
+      ],
+      "views": [
+        "front"
+      ],
+      "pattern": "/mockups/koozie/{view}-{color}.png"
+    },
+    "towel": {
+      "colors": [
+        "white",
+        "black",
+        "gray",
+        "dark-blue"
+      ],
+      "views": [
+        "front"
+      ],
+      "pattern": "/mockups/towel/{view}-{color}.png"
+    },
+    "sticker": {
+      "assets": [
+        {
+          "view": "2x2",
+          "path": "/mockups/sticker/2x2.png"
+        },
+        {
+          "view": "3x3",
+          "path": "/mockups/sticker/3x3.png"
+        },
+        {
+          "view": "5x4",
+          "path": "/mockups/sticker/5x4.png"
+        }
+      ]
+    }
   }
 }
