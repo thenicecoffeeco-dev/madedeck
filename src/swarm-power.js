@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const express = require('express');
 const path = require('path');
+const actionCatalog = require('./action-catalog');
 
 const POWER_ENTITLEMENT = 'swarm_super_admin';
 
@@ -71,6 +72,49 @@ function createSwarmPowerRouter({ db, session }) {
   router.get('/functions', async (req, res) => {
     const [functions] = await db().query(`SELECT function_key,name,category,invocation_mode,readiness,operator_visible,operator_enabled,authority_ceiling,worker_key FROM power_functions WHERE operator_visible=1 AND readiness<>'retired' ORDER BY category,name`);
     res.json({ ok: true, functions });
+  });
+
+  router.get('/modules', async (req, res) => {
+    const [modules] = await db().query(
+      `SELECT module_key,name,module_type,version,lifecycle_status,entrypoint,manifest_json
+       FROM app_modules WHERE lifecycle_status<>'retired' ORDER BY module_type,name`
+    );
+    const [products] = await db().query(
+      `SELECT product_type_key,module_key,name,editor_adapter,active,supports_color_variants,
+              supports_multiple_views,supports_vector_export,supports_cutline,configuration_json
+       FROM product_customizer_modules WHERE active=1 ORDER BY name`
+    );
+    res.json({
+      ok: true,
+      modules: modules.map(item => ({ ...item, manifest: actionCatalog.parseJson(item.manifest_json) })),
+      product_customizers: products.map(item => ({ ...item, configuration: actionCatalog.parseJson(item.configuration_json) }))
+    });
+  });
+
+  router.get('/catalog', async (req, res) => {
+    const actions = await actionCatalog.listCatalog(db());
+    const balance = await actionCatalog.getCreditBalance(db(), req.user.id);
+    const [offers] = await db().query(
+      `SELECT offer_code,name,purchase_mode,tier_code,entitlement_key,credit_grant,active,config_json
+       FROM billing_offers ORDER BY purchase_mode,name`
+    );
+    res.json({
+      ok: true,
+      balance,
+      actions,
+      offers: offers.map(offer => ({ ...offer, config: actionCatalog.parseJson(offer.config_json) }))
+    });
+  });
+
+  router.post('/catalog/:actionCode/estimate', async (req, res) => {
+    const action = await actionCatalog.getAction(db(), req.params.actionCode);
+    if (!action) return res.status(404).json({ ok: false, error: 'action_not_found' });
+    if (action.module_status !== 'ready' && action.module_status !== 'foundation') {
+      return res.status(409).json({ ok: false, error: 'module_unavailable', module_status: action.module_status });
+    }
+    const estimate = actionCatalog.calculateEstimate(action, req.body || {});
+    const balance = await actionCatalog.getCreditBalance(db(), req.user.id);
+    res.json({ ok: true, estimate, balance, affordable: estimate.credits <= balance.available });
   });
 
   router.post('/functions/:functionKey/jobs', async (req, res) => {
