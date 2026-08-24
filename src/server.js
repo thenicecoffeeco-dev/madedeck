@@ -3,10 +3,124 @@ const path=require('path');
 const fs=require('fs');
 const cookieParser=require('cookie-parser');
 const crypto=require('crypto');
+const Stripe=require('stripe');
 const {db,verifyPassword,seedUser}=require('./db');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.5.0';
+const APP_VERSION='0.5.1';
+const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
+
+function stripeOrderId(obj){
+  const raw=obj?.metadata?.madedeck_order_id||obj?.metadata?.order_id||obj?.client_reference_id||null;
+  if(raw===null||raw===undefined)return null;
+  const text=String(raw).trim();
+  return /^\d+$/.test(text)?Number(text):null;
+}
+
+async function recordStripeEvent(event,status='received',errorText=null){
+  const payload=JSON.stringify(event);
+  try{
+    await db().execute(
+      `INSERT INTO webhook_events(provider,external_event_id,event_type,payload_json,status,error_text,processed_at)
+       VALUES('stripe',?,?,?,?,?,IF(? IN ('processed','ignored'),NOW(),NULL))
+       ON DUPLICATE KEY UPDATE event_type=VALUES(event_type),payload_json=VALUES(payload_json),status=VALUES(status),error_text=VALUES(error_text),processed_at=VALUES(processed_at)`,
+      [event.id,event.type,payload,status,errorText,status]
+    );
+  }catch(e){
+    console.error('stripe webhook event log failed',e);
+  }
+}
+
+async function processStripeEvent(event){
+  const obj=event.data?.object||{};
+  const orderId=stripeOrderId(obj);
+  const paymentIntentId=obj.payment_intent||obj.id||null;
+
+  if(event.type==='payment_intent.succeeded'){
+    if(!orderId)return {status:'ignored',reason:'missing_order_id'};
+    await db().execute(
+      `UPDATE orders SET status='paid',payment_provider='stripe',payment_reference=?,production_locked_at=COALESCE(production_locked_at,NOW()) WHERE id=?`,
+      [String(obj.id||''),orderId]
+    );
+    await db().execute(
+      `INSERT INTO notifications(store_id,type,title,body)
+       SELECT store_id,'payment_received','Payment received',CONCAT('Stripe payment confirmed for order #',id,'. Ready for production review.') FROM orders WHERE id=?`,
+      [orderId]
+    );
+    return {status:'processed',orderId};
+  }
+
+  if(event.type==='checkout.session.completed'){
+    if(!orderId)return {status:'ignored',reason:'missing_order_id'};
+    await db().execute(
+      `UPDATE orders SET status='paid',payment_provider='stripe',payment_reference=?,production_locked_at=COALESCE(production_locked_at,NOW()) WHERE id=?`,
+      [String(obj.payment_intent||obj.id||''),orderId]
+    );
+    await db().execute(
+      `INSERT INTO notifications(store_id,type,title,body)
+       SELECT store_id,'payment_received','Checkout completed',CONCAT('Stripe Checkout completed for order #',id,'. Ready for production review.') FROM orders WHERE id=?`,
+      [orderId]
+    );
+    return {status:'processed',orderId};
+  }
+
+  if(event.type==='payment_intent.payment_failed'){
+    if(orderId){
+      await db().execute(
+        `UPDATE orders SET status='pending',payment_provider='stripe',payment_reference=? WHERE id=?`,
+        [String(obj.id||''),orderId]
+      );
+      await db().execute(
+        `INSERT INTO notifications(store_id,type,title,body)
+         SELECT store_id,'payment_failed','Payment failed',CONCAT('Stripe payment failed for order #',id,'. Production remains locked.') FROM orders WHERE id=?`,
+        [orderId]
+      );
+    }
+    return {status:'processed',orderId};
+  }
+
+  if(event.type==='charge.refunded'||event.type==='refund.updated'){
+    const ref=String(paymentIntentId||'');
+    if(ref){
+      await db().execute(
+        `UPDATE orders SET status='refunded' WHERE payment_provider='stripe' AND payment_reference=?`,
+        [ref]
+      );
+    }
+    return {status:'processed',paymentReference:ref||null};
+  }
+
+  return {status:'ignored',reason:'event_not_used'};
+}
+
+app.get('/api/stripe/webhook',(req,res)=>{
+  res.json({ok:true,service:'madedeck-stripe-webhook',configured:!!(stripe&&process.env.STRIPE_WEBHOOK_SECRET),version:APP_VERSION});
+});
+
+app.post('/api/stripe/webhook',express.raw({type:'application/json'}),async(req,res)=>{
+  if(!stripe||!process.env.STRIPE_WEBHOOK_SECRET){
+    return res.status(503).json({ok:false,error:'stripe_webhook_not_configured'});
+  }
+  const signature=req.headers['stripe-signature'];
+  let event;
+  try{
+    event=stripe.webhooks.constructEvent(req.body,signature,process.env.STRIPE_WEBHOOK_SECRET);
+  }catch(e){
+    console.warn('stripe webhook signature verification failed',e.message);
+    return res.status(400).send(`Webhook Error: ${e.message}`);
+  }
+  try{
+    await recordStripeEvent(event,'received');
+    const result=await processStripeEvent(event);
+    await recordStripeEvent(event,result.status);
+    res.json({received:true,status:result.status});
+  }catch(e){
+    await recordStripeEvent(event,'failed',String(e.message||e));
+    console.error('stripe webhook processing failed',e);
+    res.status(500).json({ok:false,error:'webhook_processing_failed'});
+  }
+});
+
 app.use(express.json());
 app.use(express.urlencoded({extended:false}));
 app.use(cookieParser());
@@ -47,7 +161,7 @@ function platformEconomics(subtotal){
   const platformFee=Math.max(0,(subtotal*(percent/100))+fixed);
   return {platform_fee:Number(platformFee.toFixed(2)),merchant_payout:Number(Math.max(0,subtotal-platformFee).toFixed(2))};
 }
-app.get('/health',async(req,res)=>{try{await db().query('SELECT 1');res.json({ok:true,mode:'database',database:'connected',version:APP_VERSION});}catch(e){res.status(503).json({ok:false,database:'disconnected',error:e.message});}});
+app.get('/health',async(req,res)=>{try{await db().query('SELECT 1');res.json({ok:true,mode:'database',database:'connected',version:APP_VERSION,stripe:{payments:!!stripe,webhook:!!process.env.STRIPE_WEBHOOK_SECRET}});}catch(e){res.status(503).json({ok:false,database:'disconnected',error:e.message});}});
 app.post('/api/auth/login',async(req,res)=>{const email=String(req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const [rows]=await db().execute('SELECT id,email,password_salt,password_hash,role,status FROM users WHERE email=? LIMIT 1',[email]);const u=rows[0];if(!u||u.status!=='active'||!verifyPassword(password,u.password_salt,u.password_hash))return res.status(401).json({ok:false,error:'invalid_credentials'});const token=crypto.randomBytes(32).toString('hex');sessions.set(token,{id:u.id,email:u.email,role:u.role});res.cookie('md_session',token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',maxAge:1000*60*60*12});res.json({ok:true,user:{email:u.email,role:u.role}});});
 app.post('/api/auth/logout',(req,res)=>{if(req.cookies.md_session)sessions.delete(req.cookies.md_session);res.clearCookie('md_session');res.json({ok:true});});
 app.get('/api/me',requireUser,(req,res)=>res.json({ok:true,user:req.user}));
