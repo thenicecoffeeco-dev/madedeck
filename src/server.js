@@ -5,9 +5,10 @@ const cookieParser=require('cookie-parser');
 const crypto=require('crypto');
 const Stripe=require('stripe');
 const {db,verifyPassword,seedUser}=require('./db');
+const {createSwarmPowerRouter,ensureVinnyEntitlement}=require('./swarm-power');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.5.1';
+const APP_VERSION='0.6.0';
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
 function stripeOrderId(obj){
@@ -146,6 +147,7 @@ app.use(express.static(publicDir,{setHeaders:(res,filePath)=>{
 const sessions=new Map();
 function session(req){const token=req.cookies.md_session;return token?sessions.get(token):null;}
 function requireUser(req,res,next){const s=session(req);if(!s)return res.status(401).json({ok:false,error:'login_required'});req.user=s;next();}
+app.use('/api/swarm-power',createSwarmPowerRouter({db,session}));
 function cartRole(req){const s=session(req);if(!s)return 'customer';if(s.role==='platform_admin')return 'owner';return 'merchant';}
 function paymentProviders(){return {
   paypal:!!process.env.PAYPAL_CLIENT_ID,
@@ -184,6 +186,8 @@ async function boot(){
   await db().query('SELECT 1');
   await seedUser(process.env.SEED_ADMIN_EMAIL,process.env.SEED_ADMIN_PASSWORD,'platform_admin');
   await seedUser(process.env.SEED_MERCHANT_EMAIL,process.env.SEED_MERCHANT_PASSWORD,'merchant_admin');
+  const swarmOwner=await ensureVinnyEntitlement(db());
+  console.log(`Swarm Power owner configured=${swarmOwner.configured} granted=${swarmOwner.granted}`);
   const [merchantRows]=await db().execute('SELECT id FROM users WHERE email=? LIMIT 1',[String(process.env.SEED_MERCHANT_EMAIL||'').toLowerCase()]);
   const merchant=merchantRows[0];
   if(merchant){
