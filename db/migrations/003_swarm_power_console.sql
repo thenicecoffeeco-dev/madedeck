@@ -72,6 +72,46 @@ CREATE TABLE IF NOT EXISTS swarm_bot_employees (
   CONSTRAINT fk_swarm_bot_employee_employee FOREIGN KEY(employee_id) REFERENCES swarm_employees(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS power_functions (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  function_key VARCHAR(100) NOT NULL UNIQUE,
+  name VARCHAR(160) NOT NULL,
+  category VARCHAR(80) NOT NULL,
+  invocation_mode ENUM('standalone','swarm','both','background_only') NOT NULL DEFAULT 'both',
+  readiness ENUM('planned','foundation','partial','ready','blocked','retired') NOT NULL DEFAULT 'planned',
+  operator_visible BOOLEAN NOT NULL DEFAULT TRUE,
+  operator_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  required_inputs_json JSON NULL,
+  output_contract_json JSON NULL,
+  receiver_contract_json JSON NULL,
+  authority_ceiling ENUM('A0','A1','A2','A3','A4','A5') NOT NULL DEFAULT 'A2',
+  worker_key VARCHAR(120) NULL,
+  source_reference VARCHAR(255) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS power_jobs (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  job_key CHAR(36) NOT NULL UNIQUE,
+  function_id BIGINT UNSIGNED NOT NULL,
+  mission_id BIGINT UNSIGNED NULL,
+  requested_by_user_id BIGINT UNSIGNED NOT NULL,
+  invocation_mode ENUM('standalone','swarm') NOT NULL,
+  state ENUM('draft','queued','running','waiting','blocked','completed','failed','cancelled','rolled_back') NOT NULL DEFAULT 'draft',
+  input_json JSON NULL,
+  progress_json JSON NULL,
+  output_json JSON NULL,
+  error_text TEXT NULL,
+  started_at DATETIME NULL,
+  completed_at DATETIME NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_power_job_state(state,created_at),
+  CONSTRAINT fk_power_job_function FOREIGN KEY(function_id) REFERENCES power_functions(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_power_job_user FOREIGN KEY(requested_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
++) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS swarm_missions (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   mission_key CHAR(36) NOT NULL UNIQUE,
@@ -145,6 +185,23 @@ CREATE TABLE IF NOT EXISTS swarm_evidence (
 INSERT INTO feature_flags(store_id,feature_key,enabled,config_json)
 SELECT NULL,'swarm_power_console',0,JSON_OBJECT('visibility','vinny_only','minimum_role','platform_admin')
 WHERE NOT EXISTS (SELECT 1 FROM feature_flags WHERE store_id IS NULL AND feature_key='swarm_power_console');
+
+INSERT INTO power_functions
+(function_key,name,category,invocation_mode,readiness,operator_visible,operator_enabled,authority_ceiling,worker_key,source_reference) VALUES
+('lead_search','Lead Search','leads','both','partial',1,1,'A1','lead-search-worker','UPGRADE 1 of 2.txt'),
+('lead_digester','Lead Digester','leads','both','foundation',1,1,'A2','lead-digester-worker','Lead Digester system'),
+('lead_ranking','Lead Ranking','leads','both','foundation',1,1,'A2','lead-ranking-worker','1730 Probability Engine; PROS-016'),
+('lead_qualification','Lead Qualification','leads','both','foundation',1,1,'A2','lead-qualification-worker','2690 Unified Prospect Intelligence'),
+('lead_enrichment','Lead Enrichment','leads','both','foundation',1,1,'A2','lead-enrichment-worker','Research and scraping bots'),
+('native_crm','Native CRM','crm','standalone','foundation',1,1,'A3','native-crm-service','2130 Unified Entity CRM; UPGRADE 2 of 2.txt'),
+('reputation_scan','Reputation Monitor','research','both','partial',1,1,'A1','reputation-worker','OPP-00520; ENG-1760'),
+('competitor_research','Competitive Intelligence','research','both','foundation',1,1,'A1','competitor-worker','CMD-012; ENG-1500'),
+('content_generation','Content Generator','content','both','foundation',1,1,'A2','content-worker','ENG-2720; M-101; M-110'),
+('campaign_builder','Campaign Builder','campaigns','both','foundation',1,1,'A2','campaign-worker','ENG-2660'),
+('proposal_generation','Proposal Generator','sales','both','foundation',1,1,'A2','proposal-worker','600-604; 2760'),
+('response_router','Response Router','communications','both','foundation',1,1,'A3','response-router-worker','ACT-017; ACT-021'),
+('export_manager','Export Manager','exports','standalone','foundation',1,1,'A3','export-worker','EXP-801; ASSET-025; ASSET-026')
+ON DUPLICATE KEY UPDATE name=VALUES(name),category=VALUES(category),invocation_mode=VALUES(invocation_mode),readiness=VALUES(readiness),operator_visible=VALUES(operator_visible),operator_enabled=VALUES(operator_enabled),authority_ceiling=VALUES(authority_ceiling),worker_key=VALUES(worker_key),source_reference=VALUES(source_reference);
 
 INSERT INTO swarm_bots(bot_key,name,primary_capability,autonomy,lifecycle_status,independently_selectable,operator_enabled,system_required) VALUES
 ('vinny_bot','Vinny Bot','Executive translation','Recommend / decide','active',1,1,1),
