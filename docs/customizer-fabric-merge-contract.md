@@ -44,3 +44,18 @@ Keep MadeDeck's product, placement, pricing, production-payload, cart and fulfil
 The editor writes a versioned `design_document` containing products, views, objects, source assets, print geometry and pricing inputs. Web MadeDeck and the Windows Power Console use the same API and document schema.
 
 Lead/scraping functions follow the same rule: direct operator routes and Taskmaster missions call the same service workers and persistence contracts. No duplicated scraper, ranker, CRM or export logic.
+
+## Production export contract
+
+- The garment photo is never part of the print export. Only objects inside the placement clip path are exported.
+- Trim size and bleed come from `public/mockups/print-areas.json`; they are not inferred from the visible mockup.
+- Target pixels are calculated as `(trim inches + 2 × bleed inches) × target DPI` for each dimension.
+- Fabric/Konva multipliers or pixel ratios are derived from required target pixels divided by logical canvas pixels. A fixed multiplier is not treated as a DPI guarantee.
+- Width and height ratios must agree; an aspect mismatch blocks export instead of stretching the design.
+- Browser canvas limits and memory are checked before raster export; oversized work routes to the backend renderer.
+- Editable Fabric JSON, Fabric SVG, flattened transparent PNG and source assets are stored as separate artifacts.
+- Fabric SVG preserves vector text/shapes/paths, but embedded bitmap uploads remain bitmap data.
+- PDF generation preserves vector objects where the renderer supports them and embeds raster objects at their verified effective DPI.
+- The browser remains sRGB. Production color conversion runs on the backend against the printer's required CMYK/ICC profile.
+- Generic CMYK conversion is not presented as printer-accurate proofing. Printer/profile identity is recorded in the production packet.
+- Output preflight verifies pixel dimensions, physical dimensions, bleed, color profile, transparency, bounds, fonts, source resolution and artifact creation.
