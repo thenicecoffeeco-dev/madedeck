@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "status": "provisional-until-printer-template-confirmation",
+  "defaultDpi": 300,
+  "areas": {
+    "tee.front": {"method":"dtg-dtf","trimIn":{"width":12,"height":16},"bleedIn":0.125,"exportPx":{"width":3675,"height":4875}},
+    "tee.back": {"method":"dtg-dtf","trimIn":{"width":12,"height":16},"bleedIn":0.125,"exportPx":{"width":3675,"height":4875}},
+    "tee.chest": {"method":"dtg-dtf","trimIn":{"width":4,"height":4},"bleedIn":0.125,"exportPx":{"width":1275,"height":1275}},
+    "tee.left-sleeve": {"method":"dtg-dtf","trimIn":{"width":4,"height":3},"bleedIn":0.125,"exportPx":{"width":1275,"height":975}},
+    "tee.right-sleeve": {"method":"dtg-dtf","trimIn":{"width":4,"height":3},"bleedIn":0.125,"exportPx":{"width":1275,"height":975}},
+    "hoodie.front": {"method":"dtg-dtf","trimIn":{"width":12,"height":16},"bleedIn":0.125,"exportPx":{"width":3675,"height":4875}},
+    "hoodie.back": {"method":"dtg-dtf","trimIn":{"width":12,"height":16},"bleedIn":0.125,"exportPx":{"width":3675,"height":4875}},
+    "hoodie.chest": {"method":"dtg-dtf","trimIn":{"width":4,"height":4},"bleedIn":0.125,"exportPx":{"width":1275,"height":1275}},
+    "hoodie.left-sleeve": {"method":"dtg-dtf","trimIn":{"width":4,"height":3},"bleedIn":0.125,"exportPx":{"width":1275,"height":975}},
+    "hoodie.right-sleeve": {"method":"dtg-dtf","trimIn":{"width":4,"height":3},"bleedIn":0.125,"exportPx":{"width":1275,"height":975}},
+    "polo.left-chest": {"method":"embroidery","trimIn":{"width":5,"height":5},"bleedIn":0,"exportPx":{"width":1500,"height":1500}},
+    "polo.right-chest": {"method":"embroidery","trimIn":{"width":5,"height":5},"bleedIn":0,"exportPx":{"width":1500,"height":1500}},
+    "polo.neck": {"method":"embroidery","trimIn":{"width":4,"height":2},"bleedIn":0,"exportPx":{"width":1200,"height":600}},
+    "polo.left-sleeve": {"method":"embroidery","trimIn":{"width":4,"height":3},"bleedIn":0,"exportPx":{"width":1200,"height":900}},
+    "polo.right-sleeve": {"method":"embroidery","trimIn":{"width":4,"height":3},"bleedIn":0,"exportPx":{"width":1200,"height":900}},
+    "hat.front": {"method":"print-or-embroidery","trimIn":{"width":4,"height":2.25},"bleedIn":0,"exportPx":{"width":1200,"height":675}},
+    "koozie.front": {"method":"print","trimIn":{"width":3,"height":3},"bleedIn":0.125,"exportPx":{"width":975,"height":975}},
+    "towel.front": {"method":"embroidery","trimIn":{"width":5,"height":5},"bleedIn":0,"exportPx":{"width":1500,"height":1500}},
+    "sticker.2x2": {"method":"print-cut","trimIn":{"width":2,"height":2},"bleedIn":0.125,"exportPx":{"width":675,"height":675}},
+    "sticker.3x3": {"method":"print-cut","trimIn":{"width":3,"height":3},"bleedIn":0.125,"exportPx":{"width":975,"height":975}},
+    "sticker.5x4": {"method":"print-cut","trimIn":{"width":5,"height":4},"bleedIn":0.125,"exportPx":{"width":1575,"height":1275}}
+  }
+}
