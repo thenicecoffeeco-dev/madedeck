@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS swarm_bots (
   autonomy VARCHAR(120) NOT NULL,
   lifecycle_status ENUM('active','ready','partial','foundation','blocked','retired') NOT NULL DEFAULT 'foundation',
   independently_selectable BOOLEAN NOT NULL DEFAULT TRUE,
+  operator_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  system_required BOOLEAN NOT NULL DEFAULT FALSE,
   core_version VARCHAR(30) NOT NULL DEFAULT '14.0',
   source_registry VARCHAR(120) NOT NULL DEFAULT 'Swarm Control Plane.xlsx',
   metadata_json JSON NULL,
@@ -144,23 +146,24 @@ INSERT INTO feature_flags(store_id,feature_key,enabled,config_json)
 SELECT NULL,'swarm_power_console',0,JSON_OBJECT('visibility','vinny_only','minimum_role','platform_admin')
 WHERE NOT EXISTS (SELECT 1 FROM feature_flags WHERE store_id IS NULL AND feature_key='swarm_power_console');
 
-INSERT INTO swarm_bots(bot_key,name,primary_capability,autonomy,lifecycle_status,independently_selectable) VALUES
-('vinny_bot','Vinny Bot','Executive translation','Recommend / decide','active',1),
-('overlord','Overlord','System health','Execute internally','active',1),
-('taskmaster','Taskmaster','Crew composition','Recommend; internal when capacity live','partial',1),
-('research_bot','Research Bot','Evidence collection','Execute internally','active',1),
-('war_room_bot','War Room Bot','Prospect synthesis','Execute internally','active',1),
-('comparator_bot','Comparator Bot','Best-practice comparison','Execute internally','partial',1),
-('sales_bot','Sales Bot','Customer-safe preparation','Draft','active',1),
-('proposal_bot','Proposal Bot','Scope and packaging','Draft','active',1),
-('customer_ops_bot','Customer Ops Bot','Commitment protection','Execute internally','foundation',1),
-('content_bot','Content Bot','Batch creation','Draft','ready',1),
-('meeting_bot','Meeting Bot','Meeting-to-mission','Observe / draft','blocked',0),
-('inbox_bot','Inbox Bot','M365 intake','Observe / draft','partial',0),
-('recovery_bot','Recovery Bot','Safe workaround','Execute internally','ready',1),
-('qa_lead','QA Lead','Acceptance and release','Hold / pass internally','active',1),
-('connector_steward','Connector Steward','Least-privilege routing','Diagnostic / internal','partial',1)
+INSERT INTO swarm_bots(bot_key,name,primary_capability,autonomy,lifecycle_status,independently_selectable,operator_enabled,system_required) VALUES
+('vinny_bot','Vinny Bot','Executive translation','Recommend / decide','active',1,1,1),
+('overlord','Overlord','System health','Execute internally','active',1,1,1),
+('taskmaster','Taskmaster','Crew composition','Recommend; internal when capacity live','partial',1,1,1),
+('research_bot','Research Bot','Evidence collection','Execute internally','active',1,1,0),
+('war_room_bot','War Room Bot','Prospect synthesis','Execute internally','active',1,1,0),
+('comparator_bot','Comparator Bot','Best-practice comparison','Execute internally','partial',1,1,0),
+('sales_bot','Sales Bot','Customer-safe preparation','Draft','active',1,1,0),
+('proposal_bot','Proposal Bot','Scope and packaging','Draft','active',1,1,0),
+('customer_ops_bot','Customer Ops Bot','Commitment protection','Execute internally','foundation',1,1,0),
+('content_bot','Content Bot','Batch creation','Draft','ready',1,1,0),
+('meeting_bot','Meeting Bot','Meeting-to-mission','Observe / draft','blocked',0,0,0),
+('inbox_bot','Inbox Bot','M365 intake','Observe / draft','partial',0,0,0),
+('recovery_bot','Recovery Bot','Safe workaround','Execute internally','ready',1,1,1),
+('qa_lead','QA Lead','Acceptance and release','Hold / pass internally','active',1,1,1),
+('connector_steward','Connector Steward','Least-privilege routing','Diagnostic / internal','partial',1,1,0)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),primary_capability=VALUES(primary_capability),autonomy=VALUES(autonomy),
-  lifecycle_status=VALUES(lifecycle_status),independently_selectable=VALUES(independently_selectable);
+  lifecycle_status=VALUES(lifecycle_status),independently_selectable=VALUES(independently_selectable),
+  operator_enabled=VALUES(operator_enabled),system_required=VALUES(system_required);
 
