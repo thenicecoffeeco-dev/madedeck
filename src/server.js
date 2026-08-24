@@ -146,8 +146,21 @@ app.use(express.static(publicDir,{setHeaders:(res,filePath)=>{
 }}));
 const sessions=new Map();
 function session(req){const token=req.cookies.md_session;return token?sessions.get(token):null;}
+function sessionHash(token){return crypto.createHash('sha256').update(String(token||'')).digest('hex');}
+async function durableSession(req){
+  const token=req.cookies.md_session;
+  if(!token)return null;
+  const [rows]=await db().execute(
+    `SELECT u.id,u.email,u.role FROM auth_sessions s JOIN users u ON u.id=s.user_id
+     WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>NOW() AND u.status='active' LIMIT 1`,
+    [sessionHash(token)]
+  );
+  const current=rows[0]||null;
+  if(current)await db().execute('UPDATE auth_sessions SET last_seen_at=NOW() WHERE token_hash=?',[sessionHash(token)]);
+  return current;
+}
 function requireUser(req,res,next){const s=session(req);if(!s)return res.status(401).json({ok:false,error:'login_required'});req.user=s;next();}
-app.use('/api/swarm-power',createSwarmPowerRouter({db,session}));
+app.use('/api/swarm-power',createSwarmPowerRouter({db,session:durableSession}));
 function cartRole(req){const s=session(req);if(!s)return 'customer';if(s.role==='platform_admin')return 'owner';return 'merchant';}
 function paymentProviders(){return {
   paypal:!!process.env.PAYPAL_CLIENT_ID,
@@ -164,8 +177,8 @@ function platformEconomics(subtotal){
   return {platform_fee:Number(platformFee.toFixed(2)),merchant_payout:Number(Math.max(0,subtotal-platformFee).toFixed(2))};
 }
 app.get('/health',async(req,res)=>{try{await db().query('SELECT 1');res.json({ok:true,mode:'database',database:'connected',version:APP_VERSION,stripe:{payments:!!stripe,webhook:!!process.env.STRIPE_WEBHOOK_SECRET}});}catch(e){res.status(503).json({ok:false,database:'disconnected',error:e.message});}});
-app.post('/api/auth/login',async(req,res)=>{const email=String(req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const [rows]=await db().execute('SELECT id,email,password_salt,password_hash,role,status FROM users WHERE email=? LIMIT 1',[email]);const u=rows[0];if(!u||u.status!=='active'||!verifyPassword(password,u.password_salt,u.password_hash))return res.status(401).json({ok:false,error:'invalid_credentials'});const token=crypto.randomBytes(32).toString('hex');sessions.set(token,{id:u.id,email:u.email,role:u.role});res.cookie('md_session',token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',maxAge:1000*60*60*12});res.json({ok:true,user:{email:u.email,role:u.role}});});
-app.post('/api/auth/logout',(req,res)=>{if(req.cookies.md_session)sessions.delete(req.cookies.md_session);res.clearCookie('md_session');res.json({ok:true});});
+app.post('/api/auth/login',async(req,res)=>{const email=String(req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const [rows]=await db().execute('SELECT id,email,password_salt,password_hash,role,status FROM users WHERE email=? LIMIT 1',[email]);const u=rows[0];if(!u||u.status!=='active'||!verifyPassword(password,u.password_salt,u.password_hash))return res.status(401).json({ok:false,error:'invalid_credentials'});const token=crypto.randomBytes(32).toString('hex');sessions.set(token,{id:u.id,email:u.email,role:u.role});await db().execute(`INSERT INTO auth_sessions(user_id,token_hash,user_agent,ip_hash,expires_at) VALUES(?,?,?,?,DATE_ADD(NOW(),INTERVAL 12 HOUR))`,[u.id,sessionHash(token),String(req.headers['user-agent']||'').slice(0,500),sessionHash(req.ip||'')]);res.cookie('md_session',token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',maxAge:1000*60*60*12});res.json({ok:true,user:{email:u.email,role:u.role}});});
+app.post('/api/auth/logout',async(req,res)=>{const token=req.cookies.md_session;if(token){sessions.delete(token);await db().execute('UPDATE auth_sessions SET revoked_at=NOW() WHERE token_hash=?',[sessionHash(token)]);}res.clearCookie('md_session');res.json({ok:true});});
 app.get('/api/me',requireUser,(req,res)=>res.json({ok:true,user:req.user}));
 app.get('/api/cart/context',(req,res)=>res.json({ok:true,role:cartRole(req),providers:paymentProviders(),version:APP_VERSION}));
 app.post('/api/checkout/preview',(req,res)=>{
