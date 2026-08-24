@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const express = require('express');
+const path = require('path');
 
 const POWER_ENTITLEMENT = 'swarm_super_admin';
 
@@ -32,6 +33,8 @@ function createSwarmPowerRouter({ db, session }) {
 
   router.use(requireVinny);
 
+  router.get('/ui', (req, res) => res.sendFile(path.join(__dirname, '../private/power-console.html')));
+
   router.get('/context', async (req, res) => {
     const [[botCount]] = await db().query('SELECT COUNT(*) total FROM swarm_bots WHERE lifecycle_status<>\'retired\'');
     const [[missionCount]] = await db().query('SELECT COUNT(*) total FROM swarm_missions');
@@ -47,10 +50,22 @@ function createSwarmPowerRouter({ db, session }) {
   router.get('/bots', async (req, res) => {
     const [bots] = await db().query(
       `SELECT bot_key,name,primary_capability,autonomy,lifecycle_status,
-              independently_selectable,core_version,metadata_json
+              independently_selectable,operator_enabled,system_required,core_version,metadata_json
        FROM swarm_bots WHERE lifecycle_status<>'retired' ORDER BY name`
     );
     res.json({ ok: true, bots });
+  });
+
+  router.post('/bots/:botKey/toggle', async (req, res) => {
+    const enabled = req.body.enabled === true;
+    const [rows] = await db().execute('SELECT id,bot_key,name,lifecycle_status,system_required FROM swarm_bots WHERE bot_key=? LIMIT 1', [req.params.botKey]);
+    const bot = rows[0];
+    if (!bot) return res.status(404).json({ ok: false, error: 'bot_not_found' });
+    if (bot.system_required && !enabled) return res.status(409).json({ ok: false, error: 'system_required' });
+    if (bot.lifecycle_status === 'blocked' && enabled) return res.status(409).json({ ok: false, error: 'bot_dependencies_blocked' });
+    await db().execute('UPDATE swarm_bots SET operator_enabled=? WHERE id=?', [enabled ? 1 : 0, bot.id]);
+    await db().execute(`INSERT INTO audit_log(actor_user_id,action,entity_type,entity_id,detail_json) VALUES(?,'swarm.bot.toggle','swarm_bot',?,?)`, [req.user.id, bot.bot_key, JSON.stringify({ enabled })]);
+    res.json({ ok: true, bot_key: bot.bot_key, operator_enabled: enabled });
   });
 
   router.get('/missions', async (req, res) => {
