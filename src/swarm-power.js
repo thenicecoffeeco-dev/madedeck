@@ -68,6 +68,24 @@ function createSwarmPowerRouter({ db, session }) {
     res.json({ ok: true, bot_key: bot.bot_key, operator_enabled: enabled });
   });
 
+  router.get('/functions', async (req, res) => {
+    const [functions] = await db().query(`SELECT function_key,name,category,invocation_mode,readiness,operator_visible,operator_enabled,authority_ceiling,worker_key FROM power_functions WHERE operator_visible=1 AND readiness<>'retired' ORDER BY category,name`);
+    res.json({ ok: true, functions });
+  });
+
+  router.post('/functions/:functionKey/jobs', async (req, res) => {
+    const [rows] = await db().execute('SELECT id,function_key,invocation_mode,readiness,operator_enabled,authority_ceiling FROM power_functions WHERE function_key=? LIMIT 1', [req.params.functionKey]);
+    const fn = rows[0];
+    if (!fn) return res.status(404).json({ ok: false, error: 'function_not_found' });
+    if (!fn.operator_enabled) return res.status(409).json({ ok: false, error: 'function_disabled' });
+    if (!['standalone','both'].includes(fn.invocation_mode)) return res.status(409).json({ ok: false, error: 'standalone_not_supported' });
+    if (fn.readiness !== 'ready') return res.status(409).json({ ok: false, error: 'function_not_ready', readiness: fn.readiness });
+    const jobKey = crypto.randomUUID();
+    await db().execute(`INSERT INTO power_jobs(job_key,function_id,requested_by_user_id,invocation_mode,state,input_json) VALUES(?,?,?,'standalone','queued',?)`, [jobKey, fn.id, req.user.id, JSON.stringify(req.body.input || {})]);
+    await db().execute(`INSERT INTO audit_log(actor_user_id,action,entity_type,entity_id,detail_json) VALUES(?,'power.job.create','power_job',?,?)`, [req.user.id, jobKey, JSON.stringify({ function_key: fn.function_key, mode: 'standalone' })]);
+    res.status(202).json({ ok: true, job_key: jobKey, state: 'queued', function_key: fn.function_key });
+  });
+
   router.get('/missions', async (req, res) => {
     const limit = Math.min(200, Math.max(1, Number(req.query.limit || 50)));
     const [missions] = await db().execute(
