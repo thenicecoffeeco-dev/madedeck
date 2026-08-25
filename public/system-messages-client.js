@@ -42,8 +42,9 @@
     const count = message.countdown_at ? `<span class="md-system-countdown" data-target="${message.countdown_at}">${countdown(message.countdown_at)}</span>` : '';
     const href = safeUrl(message.action_url);
     const action = href ? `<a href="${escapeHtml(href)}">${escapeHtml(message.action_label || 'Learn more')}</a>` : '';
-    node.innerHTML = `<div><b>${escapeHtml(message.title)}</b> <span>${escapeHtml(message.body)}</span> ${count} ${action}</div>${message.dismissible ? '<button type="button" aria-label="Dismiss">×</button>' : ''}`;
-    node.querySelector('button')?.addEventListener('click', () => { dismissed.add(message.message_key); saveDismissed(); node.remove(); receipt(message.message_key,'dismissed'); });
+    const control = message.requires_acknowledgment ? '<button type="button" data-ack>Acknowledge</button>' : (message.dismissible ? '<button type="button" aria-label="Dismiss">×</button>' : '');
+    node.innerHTML = `<div><b>${escapeHtml(message.title)}</b> <span>${escapeHtml(message.body)}</span> ${count} ${action}</div>${control}`;
+    node.querySelector('button')?.addEventListener('click', event => { dismissed.add(message.message_key); saveDismissed(); node.remove(); receipt(message.message_key,event.currentTarget.hasAttribute('data-ack')?'acknowledged':'dismissed'); });
     receipt(message.message_key,'seen'); return node;
   }
   function render(data) {
@@ -54,7 +55,7 @@
     messages.filter(message => message.presentation === 'toast').slice(0,3).forEach(message => toasts.appendChild(messageNode(message)));
     const modalMessage = messages.find(message => ['modal','fullscreen'].includes(message.presentation));
     const modal = root.querySelector('.md-system-modal');
-    if (modalMessage) { const href=safeUrl(modalMessage.action_url); modal.hidden = false; modal.innerHTML = `<div class="md-system-card"><div class="md-system-message ${modalMessage.severity}"><div><h2>${escapeHtml(modalMessage.title)}</h2><p>${escapeHtml(modalMessage.body)}</p>${modalMessage.countdown_at ? `<div class="md-system-countdown" data-target="${modalMessage.countdown_at}">${countdown(modalMessage.countdown_at)}</div>` : ''}${href ? `<p><a href="${escapeHtml(href)}">${escapeHtml(modalMessage.action_label || 'Continue')}</a></p>` : ''}${modalMessage.dismissible ? '<button type="button">Close</button>' : ''}</div></div>`; modal.querySelector('button')?.addEventListener('click',()=>{ dismissed.add(modalMessage.message_key); saveDismissed(); modal.hidden=true; receipt(modalMessage.message_key,'dismissed'); }); receipt(modalMessage.message_key,'seen'); } else modal.hidden = true;
+    if (modalMessage) { const href=safeUrl(modalMessage.action_url),control=modalMessage.requires_acknowledgment?'<button type="button" data-ack>Acknowledge</button>':(modalMessage.dismissible?'<button type="button">Close</button>':''); modal.hidden = false; modal.innerHTML = `<div class="md-system-card"><div class="md-system-message ${modalMessage.severity}"><div><h2>${escapeHtml(modalMessage.title)}</h2><p>${escapeHtml(modalMessage.body)}</p>${modalMessage.countdown_at ? `<div class="md-system-countdown" data-target="${modalMessage.countdown_at}">${countdown(modalMessage.countdown_at)}</div>` : ''}${href ? `<p><a href="${escapeHtml(href)}">${escapeHtml(modalMessage.action_label || 'Continue')}</a></p>` : ''}${control}</div></div>`; modal.querySelector('button')?.addEventListener('click',event=>{ dismissed.add(modalMessage.message_key); saveDismissed(); modal.hidden=true; receipt(modalMessage.message_key,event.currentTarget.hasAttribute('data-ack')?'acknowledged':'dismissed'); }); receipt(modalMessage.message_key,'seen'); } else modal.hidden = true;
     const inboxCount = messages.filter(message => message.presentation === 'inbox').length;
     const inbox = root.querySelector('.md-system-inbox'); inbox.hidden = !inboxCount; inbox.querySelector('span').textContent = inboxCount;
   }
