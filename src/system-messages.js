@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const express = require('express');
+const path = require('path');
 
 const TYPES = new Set(['general','release_note','maintenance','outage','upgrade','security','billing','promotion']);
 const SEVERITIES = new Set(['info','success','warning','critical']);
@@ -106,6 +107,10 @@ function createSystemMessagesRouter({ db, session }) {
     res.json({ ok: true, messages: messages.map(item => ({ ...item, audience: json(item.audience_json, {}) })) });
   });
 
+  router.get('/admin/ui', requireOwner, (req, res) => {
+    res.sendFile(path.join(__dirname, '../private/system-communications.html'));
+  });
+
   router.post('/admin/messages', requireOwner, async (req, res) => {
     const body = req.body || {};
     const title = String(body.title || '').trim();
@@ -146,6 +151,62 @@ function createSystemMessagesRouter({ db, session }) {
     const [components] = await db().query('SELECT * FROM system_status_components ORDER BY sort_order,name');
     const [incidents] = await db().query('SELECT * FROM system_incidents ORDER BY started_at DESC LIMIT 100');
     res.json({ ok: true, components, incidents });
+  });
+
+  router.post('/admin/components/:componentKey', requireOwner, async (req, res) => {
+    const status = ['operational','degraded','partial_outage','major_outage','maintenance'].includes(req.body?.status) ? req.body.status : null;
+    if (!status) return res.status(400).json({ ok: false, error: 'invalid_component_status' });
+    const [result] = await db().execute('UPDATE system_status_components SET status=? WHERE component_key=?', [status,req.params.componentKey]);
+    if (!result.affectedRows) return res.status(404).json({ ok: false, error: 'component_not_found' });
+    res.json({ ok: true, component_key: req.params.componentKey, status });
+  });
+
+  router.post('/admin/incidents', requireOwner, async (req, res) => {
+    const title = String(req.body?.title || '').trim();
+    if (!title) return res.status(400).json({ ok: false, error: 'title_required' });
+    const severity = ['minor','major','critical'].includes(req.body.severity) ? req.body.severity : 'minor';
+    const components = Array.isArray(req.body.affected_components) ? req.body.affected_components.map(String) : [];
+    const incidentKey = crypto.randomUUID();
+    await db().execute(
+      `INSERT INTO system_incidents
+       (incident_key,created_by_user_id,title,severity,state,affected_components_json,started_at,public_visible)
+       VALUES(?,?,?,?,'investigating',?,COALESCE(?,NOW()),?)`,
+      [incidentKey,req.user.id,title,severity,JSON.stringify(components),req.body.started_at||null,req.body.public_visible!==false]
+    );
+    res.status(201).json({ ok: true, incident_key: incidentKey, state: 'investigating' });
+  });
+
+  router.post('/admin/incidents/:incidentKey/updates', requireOwner, async (req, res) => {
+    const state = ['investigating','identified','monitoring','resolved'].includes(req.body?.state) ? req.body.state : null;
+    const body = String(req.body?.body || '').trim();
+    if (!state || !body) return res.status(400).json({ ok: false, error: 'state_and_body_required' });
+    const [incidents] = await db().execute('SELECT id FROM system_incidents WHERE incident_key=? LIMIT 1', [req.params.incidentKey]);
+    if (!incidents[0]) return res.status(404).json({ ok: false, error: 'incident_not_found' });
+    await db().execute('INSERT INTO system_incident_updates(incident_id,created_by_user_id,state,body) VALUES(?,?,?,?)', [incidents[0].id,req.user.id,state,body]);
+    await db().execute(`UPDATE system_incidents SET state=?,resolved_at=IF(?='resolved',NOW(),NULL) WHERE id=?`, [state,state,incidents[0].id]);
+    res.json({ ok: true, state });
+  });
+
+  router.get('/admin/releases', requireOwner, async (req, res) => {
+    const [releases] = await db().query('SELECT * FROM release_notes ORDER BY created_at DESC LIMIT 200');
+    res.json({ ok: true, releases: releases.map(item => ({ ...item, sections: json(item.sections_json, []), audience: json(item.audience_json, {}) })) });
+  });
+
+  router.post('/admin/releases', requireOwner, async (req, res) => {
+    const version = String(req.body?.version || '').trim();
+    const title = String(req.body?.title || '').trim();
+    const summary = String(req.body?.summary || '').trim();
+    if (!version || !title || !summary) return res.status(400).json({ ok: false, error: 'version_title_summary_required' });
+    const platform = ['all','web','desktop','server'].includes(req.body.platform) ? req.body.platform : 'all';
+    const releaseKey = crypto.randomUUID();
+    const status = req.body.publish_now === true ? 'published' : 'draft';
+    await db().execute(
+      `INSERT INTO release_notes
+       (release_key,version,platform,title,summary,sections_json,audience_json,status,published_at,created_by_user_id)
+       VALUES(?,?,?,?,?,?,?,?,IF(?='published',NOW(),NULL),?)`,
+      [releaseKey,version,platform,title,summary,JSON.stringify(req.body.sections||[]),JSON.stringify(req.body.audience||{public:true,channels:['web','desktop']}),status,status,req.user.id]
+    );
+    res.status(201).json({ ok: true, release_key: releaseKey, status });
   });
 
   return router;
