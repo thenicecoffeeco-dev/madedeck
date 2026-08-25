@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MadeDeck Power Console</title>
   <link rel="stylesheet" href="/power-console.css">
+  <link rel="stylesheet" href="/control-deck.css">
   <style>
     .action-picker{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
     .action-pill,.action-picker select{border:1px solid var(--line);background:#101825;color:#dbe6f4;border-radius:999px;padding:8px 12px;font-weight:700}
@@ -68,6 +69,11 @@
     <section id="swarmMap" class="swarm-map" aria-live="polite">
       <div class="core-node"><span>MISSION CORE</span><strong>Taskmaster</strong><small>Routes the smallest qualified crew</small></div>
       <div id="botGrid" class="bot-grid"></div>
+    </section>
+    <section class="control-deck" aria-labelledby="controlDeckTitle">
+      <div class="section-head"><div><span class="eyebrow">ADMIN CONTROL DECK</span><h1 id="controlDeckTitle">Functions & pricing</h1></div><div class="control-scope"><label>Apply to <select id="controlScope"><option value="platform">Whole platform</option><option value="user">One user</option></select></label><select id="controlUser" hidden aria-label="Select user"></select></div></div>
+      <p class="control-note">Off removes the feature and its explainer from catalog-driven screens and blocks direct launch. Price overrides never destroy the original catalog price.</p>
+      <div id="featureControls" class="feature-controls" aria-live="polite"></div>
     </section>
   </main>
   <script src="/power-console.js"></script>
