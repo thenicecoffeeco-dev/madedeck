@@ -93,3 +93,13 @@ async function loadOffers(){try{const r=await fetch('/api/offers');const j=await
 $('#saveOfferBtn')?.addEventListener('click',async()=>{const msg=$('#offerMsg');msg.textContent='Saving…';const body={store_id:1,type:offerType,title:$('#offerTitle').value.trim(),retail_price:Number($('#offerPrice').value),minimum_qty:Number($('#offerQty').value||1),access_mode:$('#offerAccess').value,fulfillment_mode:$('#offerFulfillment').value,closes_at:$('#offerClose').value||null};try{const r=await fetch('/api/offers',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!j.ok)throw new Error(j.error);msg.textContent=`Saved offer #${j.id}`;loadOffers()}catch(err){msg.textContent=`Could not save: ${err.message||'error'}`}});
 
 syncProduct();
+
+function applyReadinessTruth(){
+  const defer=(element,label,reason)=>{if(!element)return;element.disabled=true;element.setAttribute('aria-disabled','true');element.title=reason;if(label)element.textContent=label;};
+  defer($('#joinForm button[type="submit"]'),'Account signup — activation pending','Account-creation and email-verification APIs are not installed in this build.');
+  defer($('#saveProductBtn'),'Save product — server storage pending','The current editor can build a production payload, but saved-design persistence is not installed yet.');
+  $$('.dash-nav button').forEach((button,index)=>{if(index>0)defer(button,null,'This dashboard section has not been connected yet.');});
+  $$('.settings-grid button').forEach(button=>defer(button,null,'This settings module is not connected yet.'));
+  $$('.md-pay-grid button').forEach(button=>defer(button,null,'Checkout-session creation and verified payment return handling are not activated yet.'));
+}
+applyReadinessTruth();
