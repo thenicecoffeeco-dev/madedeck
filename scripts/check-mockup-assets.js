@@ -6,7 +6,11 @@ const manifestPath=path.join(root,'mockups','manifest.json');
 const manifest=JSON.parse(fs.readFileSync(manifestPath,'utf8'));
 const required=[];
 
-for(const [productKey,product] of Object.entries(manifest.products)){
+if(Array.isArray(manifest.assets)){
+  for(const asset of manifest.assets)required.push({productKey:asset.product,view:asset.view||'front',color:asset.color||null,path:asset.path});
+}
+
+for(const [productKey,product] of Object.entries(manifest.products||{})){
   if(Array.isArray(product.assets)){
     for(const asset of product.assets)required.push({productKey,view:asset.view||'front',color:asset.color||null,path:asset.path});
     continue;

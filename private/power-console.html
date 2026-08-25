@@ -19,7 +19,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="/"><span>M</span>MadeDeck Power</a>
-    <div class="owner">VINNY-ONLY CONTROL PLANE</div>
+    <div class="owner">MADEDECK OWNER COMMAND CENTER</div>
   </header>
   <main>
     <section class="command-shell">
@@ -32,7 +32,6 @@
         <button data-command="gather-leads" data-tip="Search approved public sources by industry, location, signal, or campaign target.">Gather leads</button>
         <button data-command="digest-leads" data-tip="Import, map, normalize, deduplicate, segment, and route an external lead list.">Digest leads</button>
         <button data-command="decision-inbox" data-tip="Review approvals, conflicts, pricing choices, and external actions waiting for you.">Decisions</button>
-        <button id="dialerLaunch" data-tip="Open the dockable Revenue Dialer with Native CRM queues, compliant outcomes, callbacks, and live KPIs.">Revenue dialer</button>
         <button data-command="help" data-tip="Search instructions, FAQs, bots, previous missions, exports, and troubleshooting.">Help / FAQ</button>
       </div>
       <div class="action-picker" aria-label="Premade Swarm actions">
@@ -56,13 +55,49 @@
       <div id="commandResult" class="command-result" hidden></div>
     </section>
 
-    <section class="metrics" aria-label="Swarm summary">
-      <article><span>Bots available</span><strong id="botCount">—</strong></article>
-      <article><span>Active missions</span><strong id="missionCount">—</strong></article>
-      <article><span>Needs Vinny</span><strong id="approvalCount">—</strong></article>
+    <nav class="admin-tabs" aria-label="Command center sections">
+      <button class="active" data-panel="overviewPanel">Overview</button><button data-panel="customersPanel">Subscribers</button><button data-panel="inquiriesPanel">Inquiries</button><button data-panel="commercePanel">Plans & pricing</button><button data-panel="assetsPanel">Assets</button><button data-panel="operationsPanel">Swarm operations</button>
+    </nav>
+
+    <section id="overviewPanel" class="admin-panel active">
+      <section class="metrics saas-metrics" aria-label="SaaS summary">
+        <article><span>Active subscribers</span><strong id="activeSubscribers">—</strong><small id="planMix">Loading plan mix…</small></article>
+        <article><span>Revenue this month</span><strong id="monthRevenue">—</strong><small id="lifetimeRevenue">Lifetime —</small></article>
+        <article><span>Customers</span><strong id="activeUsers">—</strong><small id="newUsers">— new in 30 days</small></article>
+        <article><span>Open inquiries</span><strong id="openInquiries">—</strong><small id="pipelineInquiries">— qualified / proposal</small></article>
+        <article><span>Credits outstanding</span><strong id="creditsOutstanding">—</strong><small id="creditsUsed">— used</small></article>
+        <article><span>Dialer subscribers</span><strong id="dialerSubscribers">—</strong><small id="dialerCalls">— calls used</small></article>
+        <article><span>Past due</span><strong id="pastDue">—</strong><small id="canceling">— canceling</small></article>
+        <article><span>30-day usage</span><strong id="usageEvents">—</strong><small id="usageCredits">— credits</small></article>
+      </section>
+      <section class="data-card"><div class="section-head"><div><span class="eyebrow">PRODUCT INTELLIGENCE</span><h2>Most-used functions</h2></div></div><div id="topActions" class="data-table"></div></section>
     </section>
 
-    <section class="section-head">
+    <section id="customersPanel" class="admin-panel">
+      <div class="section-head"><div><span class="eyebrow">CUSTOMERS</span><h1>Subscribers & accounts</h1></div><input id="customerSearch" class="search-field" placeholder="Search customer email…"></div>
+      <div id="customerTable" class="data-table"></div>
+    </section>
+
+    <section id="inquiriesPanel" class="admin-panel">
+      <div class="section-head"><div><span class="eyebrow">SALES PIPELINE</span><h1>Inquiries</h1></div></div><div id="inquiryTable" class="data-table"></div>
+    </section>
+
+    <section id="commercePanel" class="admin-panel">
+      <section class="control-deck" aria-labelledby="controlDeckTitle">
+        <div class="section-head"><div><span class="eyebrow">ALL COMMERCE CONTROLS</span><h1 id="controlDeckTitle">Plans, packs, dialer & usage pricing</h1></div><div class="control-scope"><label>Apply to <select id="controlScope"><option value="platform">Whole platform</option><option value="user">One user</option></select></label><select id="controlUser" hidden aria-label="Select user"></select></div></div>
+        <p class="control-note">Every price is editable here. Hover an input to see its original price. Turning an offer off hides and blocks that purchase without deleting its history.</p>
+        <h2>Subscriptions, credit packs & fixed packages</h2><div id="offerControls" class="feature-controls"></div>
+        <h2>Customer Revenue Dialer plans</h2><p class="control-note">The dialer is purchased and launched by customers inside MadeDeck. This section only controls its plans and reports its usage.</p><div id="dialerControls" class="feature-controls"></div>
+        <h2>Per-use credit costs</h2><div id="featureControls" class="feature-controls" aria-live="polite"></div>
+        <h2>Plan allowances</h2><div id="allowanceTable" class="data-table"></div>
+      </section>
+    </section>
+
+    <section id="assetsPanel" class="admin-panel">
+      <div class="section-head"><div><span class="eyebrow">VERSIONED ASSET FOUNDATION</span><h1>Mockups & custom art</h1></div></div><div id="assetSummary" class="metrics saas-metrics"></div><div id="assetProducts" class="data-table"></div>
+    </section>
+
+    <section id="operationsPanel" class="admin-panel"><section class="metrics" aria-label="Swarm summary"><article><span>Bots available</span><strong id="botCount">—</strong></article><article><span>Active missions</span><strong id="missionCount">—</strong></article><article><span>Needs Vinny</span><strong id="approvalCount">—</strong></article></section><section class="section-head">
       <div><span class="eyebrow">LIVE WORKFORCE</span><h1>Swarm Control <span class="help-tip" data-tip="This map shows operator-facing bots. Background identity, evidence, governance, QA, audit, and recovery functions remain active without cluttering the screen.">?</span></h1></div>
       <div class="legend"><span class="dot active"></span>Enabled <span class="dot partial"></span>Partial <span class="dot blocked"></span>Blocked</div>
     </section>
@@ -70,12 +105,7 @@
     <section id="swarmMap" class="swarm-map" aria-live="polite">
       <div class="core-node"><span>MISSION CORE</span><strong>Taskmaster</strong><small>Routes the smallest qualified crew</small></div>
       <div id="botGrid" class="bot-grid"></div>
-    </section>
-    <section class="control-deck" aria-labelledby="controlDeckTitle">
-      <div class="section-head"><div><span class="eyebrow">ADMIN CONTROL DECK</span><h1 id="controlDeckTitle">Functions & pricing</h1></div><div class="control-scope"><label>Apply to <select id="controlScope"><option value="platform">Whole platform</option><option value="user">One user</option></select></label><select id="controlUser" hidden aria-label="Select user"></select></div></div>
-      <p class="control-note">Off removes the feature and its explainer from catalog-driven screens and blocks direct launch. Price overrides never destroy the original catalog price.</p>
-      <div id="featureControls" class="feature-controls" aria-live="polite"></div>
-    </section>
+    </section></section>
   </main>
   <script src="/power-console.js"></script>
 </body>

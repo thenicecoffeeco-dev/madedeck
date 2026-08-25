@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const actionCatalog = require('./action-catalog');
 
@@ -112,6 +113,65 @@ function createSwarmPowerRouter({ db, session }) {
     const actions=await actionCatalog.listCatalog(db(),{userId,includeDisabled:true});
     const [users]=await db().query(`SELECT id,email,role,status FROM users WHERE status='active' ORDER BY email LIMIT 500`);
     res.json({ok:true,scope_user_id:userId,users,actions});
+  });
+
+  router.get('/admin/saas-overview', async (req, res) => {
+    const [[users]] = await db().query(`SELECT COUNT(*) total, SUM(status='active') active, SUM(created_at>=DATE_SUB(NOW(),INTERVAL 30 DAY)) new_30d FROM users`);
+    const [[subscriptions]] = await db().query(`SELECT COUNT(*) total, SUM(status IN ('active','trialing')) active, SUM(status='past_due') past_due, SUM(cancel_at_period_end=1) canceling FROM user_subscriptions`);
+    const [[revenue]] = await db().query(`SELECT COALESCE(SUM(CASE WHEN p.status='paid' THEN p.amount_total ELSE 0 END),0) lifetime_cents, COALESCE(SUM(CASE WHEN p.status='paid' AND p.created_at>=DATE_FORMAT(NOW(),'%Y-%m-01') THEN p.amount_total ELSE 0 END),0) month_cents FROM purchase_log p`);
+    const [[credits]] = await db().query(`SELECT COALESCE(SUM(CASE WHEN amount>0 THEN amount ELSE 0 END),0) issued, COALESCE(-SUM(CASE WHEN amount<0 THEN amount ELSE 0 END),0) used, COALESCE(SUM(amount),0) outstanding FROM credit_ledger WHERE expires_at IS NULL OR expires_at>NOW()`);
+    const [[dialer]] = await db().query(`SELECT COUNT(*) accounts, SUM(subscription_status IN ('active','trialing')) active, COALESCE(SUM(calls_used),0) calls_used FROM dialer_accounts`);
+    const [[inquiries]] = await db().query(`SELECT COUNT(*) total, SUM(status='new') new_count, SUM(status IN ('qualified','proposal')) pipeline FROM sales_inquiries`);
+    const [[usage]] = await db().query(`SELECT COUNT(*) events, COALESCE(SUM(credits_charged),0) credits, COALESCE(SUM(revenue_cents),0) revenue_cents FROM action_usage_events WHERE created_at>=DATE_SUB(NOW(),INTERVAL 30 DAY)`);
+    const [planMix] = await db().query(`SELECT bo.name,us.tier_code,COUNT(*) subscribers FROM user_subscriptions us JOIN billing_offers bo ON bo.id=us.billing_offer_id WHERE us.status IN ('active','trialing') GROUP BY bo.name,us.tier_code ORDER BY subscribers DESC`);
+    const [topActions] = await db().query(`SELECT a.action_code,a.name,COUNT(e.id) runs,COALESCE(SUM(e.quantity),0) quantity,COALESCE(SUM(e.credits_charged),0) credits FROM action_catalog a LEFT JOIN action_usage_events e ON e.action_code=a.action_code AND e.created_at>=DATE_SUB(NOW(),INTERVAL 30 DAY) GROUP BY a.action_code,a.name ORDER BY runs DESC,a.name LIMIT 12`);
+    res.json({ok:true,users,subscriptions,revenue,credits,dialer,inquiries,usage,plan_mix:planMix,top_actions:topActions});
+  });
+
+  router.get('/admin/customers', async (req, res) => {
+    const search=String(req.query.search||'').trim();
+    const pattern=`%${search}%`;
+    const [customers]=await db().execute(`SELECT u.id,u.email,u.role,u.status,u.created_at,us.tier_code,us.status subscription_status,us.current_period_end,bo.name plan_name,COALESCE((SELECT SUM(cl.amount) FROM credit_ledger cl WHERE cl.user_id=u.id AND (cl.expires_at IS NULL OR cl.expires_at>NOW())),0) credit_balance,COALESCE(da.plan_code,'') dialer_plan,COALESCE(da.subscription_status,'inactive') dialer_status,COALESCE(da.calls_used,0) calls_used,COALESCE((SELECT SUM(pl.amount_total) FROM purchase_log pl WHERE pl.user_id=u.id AND pl.status='paid'),0) lifetime_value_cents FROM users u LEFT JOIN user_subscriptions us ON us.id=(SELECT us2.id FROM user_subscriptions us2 WHERE us2.user_id=u.id ORDER BY us2.created_at DESC LIMIT 1) LEFT JOIN billing_offers bo ON bo.id=us.billing_offer_id LEFT JOIN dialer_accounts da ON da.user_id=u.id WHERE (?='' OR u.email LIKE ?) ORDER BY u.created_at DESC LIMIT 500`,[search,pattern]);
+    res.json({ok:true,customers});
+  });
+
+  router.get('/admin/inquiries', async (req, res) => {
+    const [inquiries]=await db().query(`SELECT inquiry_key,email,name,company,phone,interest_code,source,status,estimated_value_cents,message,created_at,updated_at FROM sales_inquiries ORDER BY FIELD(status,'new','contacted','qualified','proposal','won','lost','spam'),created_at DESC LIMIT 500`);
+    res.json({ok:true,inquiries});
+  });
+
+  router.get('/admin/commerce-controls', async (req, res) => {
+    const userId=req.query.user_id?Number(req.query.user_id):null;
+    const [offers]=await db().execute(`SELECT bo.offer_code entity_key,bo.name,bo.purchase_mode category,bo.tier_code,bo.credit_grant original_credit_grant,bo.active,bo.config_json,COALESCE(co.override_price_cents,CAST(JSON_UNQUOTE(JSON_EXTRACT(bo.config_json,'$.displayPriceUsd')) AS DECIMAL(12,2))*100) effective_price_cents,co.override_price_cents,COALESCE(co.override_credit_grant,bo.credit_grant) effective_credit_grant,co.override_credit_grant FROM billing_offers bo LEFT JOIN commerce_overrides co ON co.entity_type='offer' AND co.entity_key=bo.offer_code AND co.scope_type=? AND co.scope_user_id <=> ? ORDER BY FIELD(bo.purchase_mode,'subscription','payment','free'),bo.name`,[userId?'user':'platform',userId]);
+    const [dialerPlans]=await db().execute(`SELECT dp.plan_code entity_key,dp.name,'dialer' category,dp.monthly_price_cents original_price_cents,dp.included_calls original_allowance,dp.active,COALESCE(co.override_price_cents,dp.monthly_price_cents) effective_price_cents,co.override_price_cents,COALESCE(co.override_allowance,dp.included_calls) effective_allowance,co.override_allowance,dp.feature_json FROM dialer_plans dp LEFT JOIN commerce_overrides co ON co.entity_type='dialer_plan' AND co.entity_key=dp.plan_code AND co.scope_type=? AND co.scope_user_id <=> ? ORDER BY dp.monthly_price_cents`,[userId?'user':'platform',userId]);
+    const actions=await actionCatalog.listCatalog(db(),{userId:userId||req.user.id,includeDisabled:true});
+    const [allowances]=await db().query(`SELECT paa.tier_code,paa.action_code,ac.name,paa.included_quantity,paa.allowance_period,paa.overage_credit_multiplier FROM plan_action_allowances paa JOIN action_catalog ac ON ac.action_code=paa.action_code ORDER BY paa.tier_code,ac.name`);
+    res.json({ok:true,offers:offers.map(o=>({...o,config:actionCatalog.parseJson(o.config_json),original_price_cents:Number((actionCatalog.parseJson(o.config_json).displayPriceUsd||0)*100)})),dialer_plans:dialerPlans.map(p=>({...p,features:actionCatalog.parseJson(p.feature_json)})),actions,allowances});
+  });
+
+  router.put('/admin/commerce-controls/:entityType/:entityKey', async (req, res) => {
+    const entityType=req.params.entityType==='dialer_plan'?'dialer_plan':'offer';
+    const scopeType=req.body.scope_type==='user'?'user':'platform';
+    const scopeUserId=scopeType==='user'?Number(req.body.scope_user_id):null;
+    if(scopeType==='user'&&(!Number.isInteger(scopeUserId)||scopeUserId<1))return res.status(400).json({ok:false,error:'scope_user_required'});
+    const price=req.body.override_price_cents===''||req.body.override_price_cents==null?null:Number(req.body.override_price_cents);
+    const credits=req.body.override_credit_grant===''||req.body.override_credit_grant==null?null:Number(req.body.override_credit_grant);
+    const allowance=req.body.override_allowance===''||req.body.override_allowance==null?null:Number(req.body.override_allowance);
+    if([price,credits,allowance].some(v=>v!==null&&(!Number.isInteger(v)||v<0)))return res.status(400).json({ok:false,error:'invalid_override'});
+    await db().execute(`INSERT INTO commerce_overrides(entity_type,entity_key,scope_type,scope_user_id,override_price_cents,override_credit_grant,override_allowance,reason,updated_by_user_id) VALUES(?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE override_price_cents=VALUES(override_price_cents),override_credit_grant=VALUES(override_credit_grant),override_allowance=VALUES(override_allowance),reason=VALUES(reason),updated_by_user_id=VALUES(updated_by_user_id)`,[entityType,req.params.entityKey,scopeType,scopeUserId,price,credits,allowance,String(req.body.reason||'').slice(0,500)||null,req.user.id]);
+    if(typeof req.body.active==='boolean'){
+      const table=entityType==='offer'?'billing_offers':'dialer_plans',key=entityType==='offer'?'offer_code':'plan_code';
+      await db().execute(`UPDATE ${table} SET active=? WHERE ${key}=?`,[req.body.active?1:0,req.params.entityKey]);
+    }
+    res.json({ok:true,entity_type:entityType,entity_key:req.params.entityKey,scope_type:scopeType,scope_user_id:scopeUserId});
+  });
+
+  router.get('/admin/assets-status', async (req, res) => {
+    const readManifest=relative=>{try{return JSON.parse(fs.readFileSync(path.join(__dirname,'../public',relative),'utf8'));}catch(error){return {count:0,assets:[],error:'manifest_missing'};}};
+    const mockups=readManifest('mockups/manifest.json'),premades=readManifest('premades/manifest.json');
+    const products={};
+    for(const asset of mockups.assets||[]){products[asset.product]||={count:0,colors:new Set(),views:new Set()};products[asset.product].count+=1;products[asset.product].colors.add(asset.color);products[asset.product].views.add(asset.view);}
+    res.json({ok:true,mockups:{count:mockups.count||0,products:Object.fromEntries(Object.entries(products).map(([key,value])=>[key,{count:value.count,colors:[...value.colors],views:[...value.views]}]))},premades:{count:premades.count||0,categories:premades.categories||[],restricted:(premades.assets||[]).filter(item=>item.restricted).length},masters:{count:fs.existsSync(path.join(__dirname,'../public/mockup-masters'))?fs.readdirSync(path.join(__dirname,'../public/mockup-masters')).filter(name=>/\.png$/i.test(name)).length:0}});
   });
 
   router.put('/admin/feature-controls/:actionCode', async (req, res) => {
