@@ -41,6 +41,14 @@ function createDialerRouter({db,session}){
     res.json({ok:true,leads});
   });
 
+  router.get('/leads/:leadId',async(req,res)=>{
+    const [[lead]]=await db().execute(`SELECT id,company,contact_name,phone_e164,email,website,industry,postal_code,lifecycle_stage,qualification_score,qualification_lane,source,consent_status,custom_fields_json,last_contacted_at,next_action_at,created_at,updated_at FROM crm_leads WHERE id=? AND owner_user_id=? LIMIT 1`,[Number(req.params.leadId),req.user.id]);
+    if(!lead)return res.status(404).json({ok:false,error:'lead_not_found'});
+    const [calls]=await db().execute(`SELECT call_key,provider_key,state,disposition_code,disposition_category,talk_seconds,notes,created_at,completed_at FROM dialer_calls WHERE lead_id=? AND user_id=? ORDER BY created_at DESC LIMIT 50`,[lead.id,req.user.id]);
+    const [callbacks]=await db().execute(`SELECT scheduled_for,status,note FROM dialer_callbacks WHERE lead_id=? AND user_id=? ORDER BY scheduled_for DESC LIMIT 20`,[lead.id,req.user.id]);
+    res.json({ok:true,lead,calls,callbacks});
+  });
+
   router.post('/leads/import',async(req,res)=>{
     const rows=Array.isArray(req.body.rows)?req.body.rows:[]; if(!rows.length||rows.length>5000)return res.status(400).json({ok:false,error:'rows_required_or_limit_exceeded'});
     let imported=0,skipped=0;
