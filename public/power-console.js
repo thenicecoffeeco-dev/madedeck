@@ -89,5 +89,6 @@ function chooseAction(value){
 }
 document.querySelectorAll('.action-pill').forEach(pill=>pill.addEventListener('click',()=>chooseAction(pill.dataset.action)));
 byId('actionSelect').addEventListener('change',event=>{if(event.target.value)chooseAction(event.target.value);});
+byId('dialerLaunch').addEventListener('click',()=>{window.location.href='/api/dialer/ui';});
 
 loadConsole();
