@@ -173,6 +173,11 @@ function createSwarmPowerRouter({ db, session }) {
     res.json({ ok: true, missions });
   });
 
+  router.get('/approvals', async (req, res) => {
+    const [approvals]=await db().query(`SELECT a.approval_key,a.authority_class,a.status,a.expires_at,a.created_at,m.mission_key,m.title FROM swarm_approvals a JOIN swarm_missions m ON m.id=a.mission_id WHERE a.status='pending' ORDER BY a.created_at DESC LIMIT 200`);
+    res.json({ok:true,approvals});
+  });
+
   router.post('/missions', async (req, res) => {
     const title = String(req.body.title || '').trim();
     const requestText = String(req.body.request_text || '').trim();
