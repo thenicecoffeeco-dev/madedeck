@@ -6,6 +6,7 @@ const crypto=require('crypto');
 const Stripe=require('stripe');
 const {db,verifyPassword,seedUser}=require('./db');
 const {createSwarmPowerRouter,ensureVinnyEntitlement}=require('./swarm-power');\nconst {createSystemMessagesRouter}=require('./system-messages');
+const {createDialerRouter}=require('./dialer');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
 const APP_VERSION='0.6.0';
@@ -161,6 +162,7 @@ async function durableSession(req){
 }
 function requireUser(req,res,next){const s=session(req);if(!s)return res.status(401).json({ok:false,error:'login_required'});req.user=s;next();}
 app.use('/api/swarm-power',createSwarmPowerRouter({db,session:durableSession}));\napp.use('/api/system-messages',createSystemMessagesRouter({db,session:durableSession}));
+app.use('/api/dialer',createDialerRouter({db,session:durableSession}));
 function cartRole(req){const s=session(req);if(!s)return 'customer';if(s.role==='platform_admin')return 'owner';return 'merchant';}
 function paymentProviders(){return {
   paypal:!!process.env.PAYPAL_CLIENT_ID,
