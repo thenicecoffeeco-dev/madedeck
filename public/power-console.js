@@ -1,4 +1,4 @@
-const state={bots:[],controlActions:[],controlUsers:[]};
+const state={bots:[],controlActions:[],controlUsers:[],selectedAction:'custom'};
 const byId=id=>document.getElementById(id);
 
 async function api(path,options={}){
@@ -77,21 +77,40 @@ async function savePrice(action,value){try{await api(`/admin/price-controls/${en
 byId('commandForm').addEventListener('submit',event=>{
   event.preventDefault();
   const command=byId('commandInput').value.trim();
-  byId('commandStatus').textContent=command?`Command captured: “${command}”. Mission interpretation wiring is next.`:'Type a command, database search, or question first.';
+  if(!command){byId('commandStatus').textContent='Type a mission request first.';return;}
+  byId('commandStatus').textContent='Creating a governed draft mission…';
+  api('/missions',{method:'POST',body:JSON.stringify({title:command.slice(0,120),request_text:command,authority_class:'A1',evidence_mode:'hybrid',mission_contract:{template:state.selectedAction,execution:'draft_only',requires_preflight:true}})}).then(result=>{
+    byId('commandStatus').textContent='Draft mission created. Nothing external has run.';
+    showResult(`<b>Mission ${escapeText(result.mission_key)}</b><br>State: draft · Next: select bots, estimate cost, inspect evidence requirements, then approve execution.`);
+  }).catch(error=>byId('commandStatus').textContent=`Mission creation failed: ${error.message}`);
 });
 
 document.querySelectorAll('[data-command]').forEach(button=>button.addEventListener('click',()=>{
-  byId('commandInput').value=button.textContent;
+  const type=button.dataset.command;
+  if(type==='help'){showResult('<b>How this console works</b><br>Choose a template or describe a goal, then Run creates a draft mission. Draft means no scraping, sending, spending, calling, or publishing has happened. Revenue Dialer opens the CRM calling workspace. Decisions shows pending A3–A5 approvals.');return;}
+  if(type==='decision-inbox'){loadApprovals();return;}
+  const prompts={
+    'new-mission':'Describe the outcome, target, inputs, deadline, and acceptable output.',
+    'gather-leads':'Gather leads for [industry] in [location] using approved sources; deduplicate, score, and return evidence.',
+    'digest-leads':'Digest the uploaded lead list; normalize, deduplicate, flag incomplete records, segment, rank, and prepare CRM import.'
+  };
+  state.selectedAction=type;
+  byId('commandInput').value=prompts[type]||button.textContent;
   byId('commandInput').focus();
-  byId('commandStatus').textContent=`Ready to configure: ${button.textContent}.`;
+  byId('commandStatus').textContent=`Edit the request, then Run to create a draft. No worker launches from this shortcut.`;
 }));
+
+function escapeText(value){const node=document.createElement('div');node.textContent=String(value||'');return node.innerHTML;}
+function showResult(html){const box=byId('commandResult');box.hidden=false;box.innerHTML=html;}
+async function loadApprovals(){try{const result=await api('/approvals');showResult(result.approvals.length?`<b>Pending decisions</b><br>${result.approvals.map(a=>`${escapeText(a.title)} · ${escapeText(a.authority_class)} · ${escapeText(a.approval_key)}`).join('<br>')}`:'<b>Decision inbox</b><br>No pending approvals.');byId('commandStatus').textContent=`${result.approvals.length} pending decision(s).`;}catch(error){byId('commandStatus').textContent=`Decision inbox failed: ${error.message}`;}}
 
 const actionLabels={enrich:'Enrich selected leads',qualify:'Qualify and rank selected leads',outreach:'Generate governed outreach drafts',campaign:'Build a MadeDeck marketing campaign','war-room':'Build War Room packets',calling:'Prepare call scripts and objections',content:'Create a content package',proposal:'Generate proposal options','full-prospect':'Create a full prospect package',custom:'Build a custom mission'};
 function chooseAction(value){
   document.querySelectorAll('.action-pill').forEach(pill=>pill.classList.toggle('active',pill.dataset.action===value));
   const label=actionLabels[value]||'Choose a Swarm action';
+  state.selectedAction=value;
   byId('commandInput').value=label;
-  byId('commandStatus').textContent=`${label} selected. Taskmaster will preview required data, crew, estimated cost, outputs, and authority before launch.`;
+  byId('commandStatus').textContent=`${label} selected. Run creates a draft mission; execution still requires preflight and any applicable approval.`;
 }
 document.querySelectorAll('.action-pill').forEach(pill=>pill.addEventListener('click',()=>chooseAction(pill.dataset.action)));
 byId('actionSelect').addEventListener('change',event=>{if(event.target.value)chooseAction(event.target.value);});
