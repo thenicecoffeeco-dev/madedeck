@@ -10,7 +10,7 @@
     Monospace: ['Courier New','Consolas','Lucida Console']
   };
 
-  const textState = { font: 'Inter', shape: 'straight', curve: 45, letterSpacing: 0 };
+  const textState = { font: 'Inter', shape: 'straight', curve: 45, letterSpacing: 0, bold: false, italic: false, underline: false };
   const $ = selector => document.querySelector(selector);
 
   function escapeXml(value) {
@@ -50,12 +50,15 @@
     preview.dataset.text = value;
     preview.style.fontFamily = textState.font;
     preview.style.letterSpacing = `${textState.letterSpacing}px`;
+    preview.style.fontWeight = textState.bold ? '700' : '400';
+    preview.style.fontStyle = textState.italic ? 'italic' : 'normal';
+    preview.style.textDecoration = textState.underline ? 'underline' : 'none';
     preview.style.transform = 'none';
     if (!value || textState.shape === 'straight') {
       preview.textContent = value;
       return;
     }
-    preview.innerHTML = `<svg viewBox="0 0 300 170" role="img" aria-label="${escapeXml(value)}" style="width:260px;overflow:visible"><defs><path id="mdTextCurve" d="${pathGeometry()}"/></defs><text fill="currentColor" text-anchor="middle" style="font-family:${escapeXml(textState.font)};letter-spacing:${textState.letterSpacing}px"><textPath href="#mdTextCurve" startOffset="50%">${escapeXml(value)}</textPath></text></svg>`;
+    preview.innerHTML = `<svg viewBox="0 0 300 170" role="img" aria-label="${escapeXml(value)}" style="width:260px;overflow:visible"><defs><path id="mdTextCurve" d="${pathGeometry()}"/></defs><text fill="currentColor" text-anchor="middle" text-decoration="${textState.underline?'underline':'none'}" style="font-family:${escapeXml(textState.font)};font-weight:${textState.bold?'700':'400'};font-style:${textState.italic?'italic':'normal'};letter-spacing:${textState.letterSpacing}px"><textPath href="#mdTextCurve" startOffset="50%">${escapeXml(value)}</textPath></text></svg>`;
   }
 
   function exposeProductionContract() {
@@ -92,6 +95,12 @@
     });
     $('#mdTextCurveStrength').addEventListener('input', event => { textState.curve = Number(event.target.value); renderPreview(); });
     $('#mdTextLetterSpacing').addEventListener('input', event => { textState.letterSpacing = Number(event.target.value); renderPreview(); });
+    document.querySelectorAll('#textToolsV4 [data-style]').forEach(button => button.addEventListener('click', () => {
+      const style = button.dataset.style;
+      textState[style] = !textState[style];
+      button.setAttribute('aria-pressed', String(textState[style]));
+      renderPreview();
+    }));
     $('#textInput')?.addEventListener('input', renderPreview);
     $('#addTextBtn')?.addEventListener('click', () => setTimeout(renderPreview));
     exposeProductionContract();
