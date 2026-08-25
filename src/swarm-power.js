@@ -92,7 +92,7 @@ function createSwarmPowerRouter({ db, session }) {
   });
 
   router.get('/catalog', async (req, res) => {
-    const actions = await actionCatalog.listCatalog(db());
+    const actions = await actionCatalog.listCatalog(db(),{userId:req.user.id});
     const balance = await actionCatalog.getCreditBalance(db(), req.user.id);
     const [offers] = await db().query(
       `SELECT offer_code,name,purchase_mode,tier_code,entitlement_key,credit_grant,active,config_json
@@ -106,8 +106,41 @@ function createSwarmPowerRouter({ db, session }) {
     });
   });
 
+  router.get('/admin/feature-controls', async (req, res) => {
+    const userId=req.query.user_id?Number(req.query.user_id):req.user.id;
+    if(!Number.isInteger(userId)||userId<1)return res.status(400).json({ok:false,error:'invalid_user_id'});
+    const actions=await actionCatalog.listCatalog(db(),{userId,includeDisabled:true});
+    const [users]=await db().query(`SELECT id,email,role,status FROM users WHERE status='active' ORDER BY email LIMIT 500`);
+    res.json({ok:true,scope_user_id:userId,users,actions});
+  });
+
+  router.put('/admin/feature-controls/:actionCode', async (req, res) => {
+    const scopeType=req.body.scope_type==='user'?'user':'platform',scopeUserId=scopeType==='user'?Number(req.body.scope_user_id):null;
+    if(scopeType==='user'&&(!Number.isInteger(scopeUserId)||scopeUserId<1))return res.status(400).json({ok:false,error:'scope_user_required'});
+    const [found]=await db().execute('SELECT action_code FROM action_catalog WHERE action_code=? LIMIT 1',[req.params.actionCode]);
+    if(!found[0])return res.status(404).json({ok:false,error:'action_not_found'});
+    const [[previous]]=await db().execute(`SELECT enabled,reason,effective_from,effective_until FROM feature_control_overrides WHERE entity_type='action' AND entity_key=? AND scope_type=? AND scope_user_id <=> ? LIMIT 1`,[req.params.actionCode,scopeType,scopeUserId]);
+    const next={enabled:req.body.enabled!==false,reason:req.body.reason||null,effective_from:req.body.effective_from||null,effective_until:req.body.effective_until||null};
+    await db().execute(`INSERT INTO feature_control_overrides(entity_type,entity_key,scope_type,scope_user_id,enabled,reason,effective_from,effective_until,updated_by_user_id) VALUES('action',?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE enabled=VALUES(enabled),reason=VALUES(reason),effective_from=VALUES(effective_from),effective_until=VALUES(effective_until),updated_by_user_id=VALUES(updated_by_user_id)`,[req.params.actionCode,scopeType,scopeUserId,next.enabled?1:0,String(next.reason||'').slice(0,500)||null,next.effective_from,next.effective_until,req.user.id]);
+    await db().execute(`INSERT INTO feature_control_events(actor_user_id,entity_type,entity_key,scope_type,scope_user_id,event_type,previous_json,next_json) VALUES(?,'action',?,?,?,'visibility_changed',?,?)`,[req.user.id,req.params.actionCode,scopeType,scopeUserId,JSON.stringify(previous||null),JSON.stringify(next)]);
+    res.json({ok:true,action_code:req.params.actionCode,scope_type:scopeType,scope_user_id:scopeUserId,...next});
+  });
+
+  router.put('/admin/price-controls/:actionCode', async (req, res) => {
+    const scopeType=req.body.scope_type==='user'?'user':'platform',scopeUserId=scopeType==='user'?Number(req.body.scope_user_id):null,value=req.body.override_base_credits;
+    if(scopeType==='user'&&(!Number.isInteger(scopeUserId)||scopeUserId<1))return res.status(400).json({ok:false,error:'scope_user_required'});
+    if(value!==null&&value!==''&&(!Number.isInteger(Number(value))||Number(value)<0))return res.status(400).json({ok:false,error:'invalid_credit_price'});
+    const [[action]]=await db().execute('SELECT action_code,base_credits FROM action_catalog WHERE action_code=? LIMIT 1',[req.params.actionCode]);
+    if(!action)return res.status(404).json({ok:false,error:'action_not_found'});
+    const [[previous]]=await db().execute(`SELECT override_base_credits,reason,effective_from,effective_until FROM action_price_overrides WHERE action_code=? AND scope_type=? AND scope_user_id <=> ? LIMIT 1`,[req.params.actionCode,scopeType,scopeUserId]);
+    const override=value===null||value===''?null:Number(value),next={override_base_credits:override,reason:req.body.reason||null,effective_from:req.body.effective_from||null,effective_until:req.body.effective_until||null,original_base_credits:Number(action.base_credits)};
+    await db().execute(`INSERT INTO action_price_overrides(action_code,scope_type,scope_user_id,override_base_credits,reason,effective_from,effective_until,updated_by_user_id) VALUES(?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE override_base_credits=VALUES(override_base_credits),reason=VALUES(reason),effective_from=VALUES(effective_from),effective_until=VALUES(effective_until),updated_by_user_id=VALUES(updated_by_user_id)`,[req.params.actionCode,scopeType,scopeUserId,override,String(next.reason||'').slice(0,500)||null,next.effective_from,next.effective_until,req.user.id]);
+    await db().execute(`INSERT INTO feature_control_events(actor_user_id,entity_type,entity_key,scope_type,scope_user_id,event_type,previous_json,next_json) VALUES(?,'action',?,?,?,'price_changed',?,?)`,[req.user.id,req.params.actionCode,scopeType,scopeUserId,JSON.stringify(previous||null),JSON.stringify(next)]);
+    res.json({ok:true,action_code:req.params.actionCode,scope_type:scopeType,scope_user_id:scopeUserId,...next});
+  });
+
   router.post('/catalog/:actionCode/estimate', async (req, res) => {
-    const action = await actionCatalog.getAction(db(), req.params.actionCode);
+    const action = await actionCatalog.getAction(db(), req.params.actionCode,req.user.id);
     if (!action) return res.status(404).json({ ok: false, error: 'action_not_found' });
     if (action.module_status !== 'ready' && action.module_status !== 'foundation') {
       return res.status(409).json({ ok: false, error: 'module_unavailable', module_status: action.module_status });
@@ -206,4 +239,3 @@ async function ensureVinnyEntitlement(db) {
 }
 
 module.exports = { createSwarmPowerRouter, ensureVinnyEntitlement };
-
