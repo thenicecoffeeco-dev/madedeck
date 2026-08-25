@@ -1,4 +1,4 @@
-const state={bots:[]};
+const state={bots:[],controlActions:[],controlUsers:[]};
 const byId=id=>document.getElementById(id);
 
 async function api(path,options={}){
@@ -68,6 +68,12 @@ async function loadConsole(){
   }
 }
 
+function controlTarget(){return byId('controlScope').value==='user'?{scope_type:'user',scope_user_id:Number(byId('controlUser').value)}:{scope_type:'platform',scope_user_id:null};}
+function renderFeatureControls(){const root=byId('featureControls');root.innerHTML='';state.controlActions.forEach(action=>{const row=document.createElement('article');row.className='feature-row';const info=document.createElement('div'),h=document.createElement('h3'),p=document.createElement('p');h.textContent=action.name;p.textContent=`${action.action_code} · ${action.category} · ${action.billing_unit}`;info.append(h,p);const label=document.createElement('label');label.className='switch';label.title=action.effective_enabled?'Visible and launchable':'Hidden and blocked';const toggle=document.createElement('input'),slider=document.createElement('span');toggle.type='checkbox';toggle.checked=Boolean(action.effective_enabled);label.append(toggle,slider);const wrap=document.createElement('div');wrap.className='price-wrap';const price=document.createElement('input');price.type='number';price.min='0';price.step='1';price.value=action.base_credits;price.title=`Original catalog price: ${action.original_pricing.base_credits} credits per ${action.quantity_step||1} ${action.billing_unit}. Clear the field to restore it.`;wrap.append(price);const save=document.createElement('button');save.className='save-price';save.textContent='Save price';toggle.onchange=()=>saveVisibility(action,toggle.checked);save.onclick=()=>savePrice(action,price.value);row.append(info,label,wrap,save);root.append(row);});}
+async function loadFeatureControls(){const target=controlTarget(),q=target.scope_type==='user'&&target.scope_user_id?`?user_id=${target.scope_user_id}`:'';const result=await api(`/admin/feature-controls${q}`);state.controlActions=result.actions;state.controlUsers=result.users;const user=byId('controlUser');if(!user.options.length)result.users.forEach(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=`${u.email} · ${u.role}`;user.append(o);});renderFeatureControls();}
+async function saveVisibility(action,enabled){try{await api(`/admin/feature-controls/${encodeURIComponent(action.action_code)}`,{method:'PUT',body:JSON.stringify({...controlTarget(),enabled})});byId('commandStatus').textContent=`${action.name} is now ${enabled?'visible':'hidden'} for ${controlTarget().scope_type==='platform'?'the platform':'the selected user'}.`;await loadFeatureControls();}catch(e){byId('commandStatus').textContent=`Control update failed: ${e.message}`;await loadFeatureControls();}}
+async function savePrice(action,value){try{await api(`/admin/price-controls/${encodeURIComponent(action.action_code)}`,{method:'PUT',body:JSON.stringify({...controlTarget(),override_base_credits:value===''?null:Number(value)})});byId('commandStatus').textContent=`${action.name} price updated. Original remains ${action.original_pricing.base_credits} credits.`;await loadFeatureControls();}catch(e){byId('commandStatus').textContent=`Price update failed: ${e.message}`;}}
+
 byId('commandForm').addEventListener('submit',event=>{
   event.preventDefault();
   const command=byId('commandInput').value.trim();
@@ -90,5 +96,7 @@ function chooseAction(value){
 document.querySelectorAll('.action-pill').forEach(pill=>pill.addEventListener('click',()=>chooseAction(pill.dataset.action)));
 byId('actionSelect').addEventListener('change',event=>{if(event.target.value)chooseAction(event.target.value);});
 byId('dialerLaunch').addEventListener('click',()=>{window.location.href='/api/dialer/ui';});
+byId('controlScope').addEventListener('change',()=>{byId('controlUser').hidden=byId('controlScope').value!=='user';loadFeatureControls().catch(e=>byId('commandStatus').textContent=e.message);});
+byId('controlUser').addEventListener('change',()=>loadFeatureControls().catch(e=>byId('commandStatus').textContent=e.message));
 
-loadConsole();
+Promise.all([loadConsole(),loadFeatureControls()]).catch(()=>{});
