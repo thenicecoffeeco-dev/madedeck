@@ -7,7 +7,7 @@ const Stripe=require('stripe');
 const {db,verifyPassword,seedUser}=require('./db');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.6.0';
+const APP_VERSION='0.6.1';
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
 function stripeOrderId(obj){
@@ -124,6 +124,21 @@ app.post('/api/stripe/webhook',express.raw({type:'application/json'}),async(req,
 app.use(express.json());
 app.use(express.urlencoded({extended:false}));
 app.use(cookieParser());
+const mockupDir=path.join(publicDir,'mockups');
+const premadeDir=path.join(publicDir,'premades');
+const assetStaticOptions={fallthrough:true,index:false,setHeaders:(res)=>{
+  res.setHeader('Cache-Control','public, max-age=86400');
+  res.setHeader('X-Content-Type-Options','nosniff');
+}};
+app.get('/api/assets/status',(req,res)=>{
+  const samples={
+    mockup:path.join(mockupDir,'tee','front-white.png'),
+    premade:path.join(premadeDir,'cute-faces','10.png')
+  };
+  res.json({ok:true,version:APP_VERSION,public_dir:publicDir,assets:Object.fromEntries(Object.entries(samples).map(([key,file])=>[key,{exists:fs.existsSync(file),bytes:fs.existsSync(file)?fs.statSync(file).size:0,path:path.relative(publicDir,file)}]))});
+});
+app.use('/mockups',express.static(mockupDir,assetStaticOptions));
+app.use('/premades',express.static(premadeDir,assetStaticOptions));
 app.get('/',(req,res)=>{
   try{
     const html=fs.readFileSync(path.join(publicDir,'index.html'),'utf8')

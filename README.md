@@ -1,6 +1,6 @@
 # MadeDeck
 
-Current application version: **0.6.0**
+Current application version: **0.6.1**
 
 The v0.6 build includes the apparel mockup and premade-art libraries, a working inquiry capture path, and a platform-admin monetization console for plans, modular add-ons, credits and subscriber visibility.
 
