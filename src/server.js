@@ -10,7 +10,7 @@ const {createDialerRouter}=require('./dialer');
 const {createSystemMessagesRouter}=require('./system-messages');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.6.2';
+const APP_VERSION='0.6.3';
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
 function stripeOrderId(obj){
