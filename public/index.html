@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MadeDeck — Create, Sell & Fulfill Custom Merch</title>
 <meta name="description" content="Web-to-print product customization and fulfillment for creators, small brands, teams and businesses.">
-<link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/admin.css">
 </head>
 <body>
 <header class="site-header">
@@ -180,7 +181,7 @@
     <div><span class="eyebrow">MERCHANT SIGNUP</span><h1 class="page-title">Your merch store, without the fulfillment headache.</h1><p class="page-sub">Create products, set your retail prices, launch preorders and bulk offers, then choose direct-to-customer or office fulfillment.</p>
       <div class="benefits"><div><b>1</b><span><strong>Build your store</strong><small>Products, branding, pricing and saved designs.</small></span></div><div><b>2</b><span><strong>Connect payments</strong><small>Merchant-owned payment flow with MadeDeck platform economics protected.</small></span></div><div><b>3</b><span><strong>Sell your way</strong><small>Storefront, preorder clock, bulk offer, private link or paid access.</small></span></div></div>
     </div>
-    <form class="form-card" id="joinForm"><h2>Create merchant account</h2><label>Brand / business<input required placeholder="Your brand"></label><label>Email<input required type="email" placeholder="you@example.com"></label><label>Password<input required type="password" placeholder="Create password"></label><button class="btn btn-dark full" type="submit">Start setup</button><p class="form-msg" id="joinMsg"></p></form>
+    <form class="form-card" id="joinForm"><h2>Start your MadeDeck setup</h2><label>Your name<input id="joinName" required placeholder="Your name"></label><label>Brand / business<input id="joinCompany" required placeholder="Your brand"></label><label>Email<input id="joinEmail" required type="email" placeholder="you@example.com"></label><label>What do you want to launch?<select id="joinInterest"><option>Merch store + customizer</option><option>CRM + dialer</option><option>Content engine</option><option>Swarm operations</option><option>Complete MadeDeck workspace</option></select></label><button class="btn btn-dark full" type="submit">Request setup</button><p class="form-msg" id="joinMsg"></p></form>
   </div>
 </section>
 
@@ -192,15 +193,26 @@
 </section>
 
 <section class="page shell page-pad" id="page-dashboard">
-  <div class="dash-head"><div><span class="eyebrow">MERCHANT DASHBOARD</span><h1 class="page-title">Your store, without the clutter.</h1><p class="page-sub">Open only the tools you need.</p></div><button class="btn btn-dark" id="logoutBtn">Sign out</button></div>
-  <div class="dash-stats"><div><span>Sales this month</span><b>$0</b></div><div><span>Your profit</span><b>$0</b></div><div><span>Orders</span><b>0</b></div><div><span>Live offers</span><b id="offerCount">0</b></div></div>
+  <div class="dash-head"><div><span class="eyebrow" id="dashboardEyebrow">MERCHANT DASHBOARD</span><h1 class="page-title" id="dashboardTitle">Your store, without the clutter.</h1><p class="page-sub" id="dashboardSub">Open only the tools you need.</p></div><button class="btn btn-dark" id="logoutBtn">Sign out</button></div>
+  <div class="dash-stats" id="dashboardStats"><div><span>Sales this month</span><b>$0</b></div><div><span>Your profit</span><b>$0</b></div><div><span>Orders</span><b>0</b></div><div><span>Live offers</span><b id="offerCount">0</b></div></div>
   <div class="dashboard-grid">
-    <aside class="dash-nav"><button class="active">Overview</button><button>Products</button><button>Orders</button><button>Offers</button><button>Designs</button><button>Customers</button><button>Settings</button></aside>
+    <aside class="dash-nav"><button class="active">Overview</button><button>Products</button><button>Orders</button><button>Offers</button><button>Designs</button><button>Customers</button><button>Modules</button><button>Monetization</button><button>Settings</button></aside>
     <div class="dash-content">
       <details open><summary>Create a product <span>＋</span></summary><div class="detail-body"><div class="form-grid"><label>Product name<input id="dashName" placeholder="New Crew Tee"></label><label>Base product<select id="dashBase"><option>Unisex Standard Tee</option><option>Pullover Hoodie</option><option>Performance Polo</option><option>Premium Snapback</option></select></label><label>Retail price<input type="number" id="dashPrice" value="32"></label><label>Fulfillment<select><option>Direct + office</option><option>Direct only</option><option>Office only</option></select></label></div><button class="btn btn-dark" id="saveProductBtn">Save product</button><div id="savedProducts" class="saved-list"></div></div></details>
       <details><summary>Create an offer <span>＋</span></summary><div class="detail-body"><div class="offer-types"><button data-offertype="store">Store item</button><button data-offertype="preorder">Preorder</button><button data-offertype="bulk">Bulk purchase</button></div><div class="form-grid"><label>Title<input id="offerTitle"></label><label>Retail price<input id="offerPrice" type="number"></label><label>Minimum quantity<input id="offerQty" type="number" value="1"></label><label>Access<select id="offerAccess"><option value="public">Public</option><option value="paid_customer">Paid customers only</option><option value="private_link">Private link</option></select></label><label>Fulfillment<select id="offerFulfillment"><option value="both">Direct + office</option><option value="direct">Direct only</option><option value="office">Office batch</option></select></label><label>Close date<input id="offerClose" type="datetime-local"></label></div><button class="btn btn-dark" id="saveOfferBtn">Save offer</button><p class="form-msg" id="offerMsg"></p></div></details>
       <details><summary>Saved offers <span>＋</span></summary><div class="detail-body" id="offerList">No offers loaded yet.</div></details>
       <details><summary>Pricing & fulfillment <span>＋</span></summary><div class="detail-body"><p>Retail pricing stays above protected MadeDeck minimums. Product-specific fulfillment, payment and cancellation controls will live here.</p></div></details>
+      <section class="admin-console" id="adminMonetization" hidden>
+        <div class="admin-console-head"><div><span class="eyebrow">PLATFORM CONTROL</span><h2>Monetization</h2><p>Plans, modules, credits, subscribers and inquiries in one place.</p></div><button class="btn btn-light" id="refreshMoneyBtn" type="button">Refresh data</button></div>
+        <div class="money-stats" id="moneyStats"></div>
+        <div class="money-layout">
+          <div class="money-panel"><div class="money-panel-head"><h3>Plans</h3><span>Monthly price + included credits</span></div><div id="planRows" class="money-rows"></div></div>
+          <div class="money-panel"><div class="money-panel-head"><h3>Modular add-ons</h3><span>Sell alone or bundle into a tier</span></div><div id="moduleRows" class="money-rows"></div></div>
+          <div class="money-panel"><div class="money-panel-head"><h3>Subscribers</h3><span>Current account and renewal status</span></div><div id="subscriberRows" class="money-rows"></div></div>
+          <div class="money-panel"><div class="money-panel-head"><h3>Inquiries</h3><span>Move each lead through one simple status</span></div><div id="inquiryRows" class="money-rows"></div></div>
+        </div>
+        <p class="form-msg" id="moneyMsg"></p>
+      </section>
       <details><summary>Store settings <span>＋</span></summary><div class="detail-body"><div class="settings-grid"><button>Payments</button><button>Team access</button><button>Fulfillment</button><button>SEO & growth</button></div></div></details>
     </div>
   </div>

@@ -1,5 +1,11 @@
 # MadeDeck
 
+Current application version: **0.6.0**
+
+The v0.6 build includes the apparel mockup and premade-art libraries, a working inquiry capture path, and a platform-admin monetization console for plans, modular add-ons, credits and subscriber visibility.
+
+Before deployment, import `db/migrations/003_monetization_control.sql` into an existing database. New installations can use `db/full_schema.sql`.
+
 MadeDeck is a multi-tenant SaaS-lite direct-to-print, fulfillment, storefront, preorder, and bulk-purchase platform.
 
 Current baseline goals:
