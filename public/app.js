@@ -15,7 +15,7 @@ const productData={
 const placementLabels={front:'Front',back:'Back',chest:'Left chest',lchest:'Left breast',rchest:'Right breast',neck:'Center neck',lsleeve:'Left sleeve',rsleeve:'Right sleeve'};
 const colorSlug=v=>String(v||'white').toLowerCase().replace(/\s+/g,'-');
 const viewAsset=v=>v==='chest'||v==='lchest'||v==='rchest'?'front':v==='neck'?'back':v==='lsleeve'?'left-sleeve':v==='rsleeve'?'right-sleeve':v;
-const APP_ASSET_VERSION='0.6.3';
+const APP_ASSET_VERSION='0.6.4';
 const CUSTOM_TEXT_FEE=6;
 const colorFilters={
   white:'brightness(0) invert(1) drop-shadow(0 28px 30px rgba(15,23,42,.13))',
@@ -99,7 +99,7 @@ ensureCart();renderCart();
 $('#buyNow')?.addEventListener('click',()=>{const payload=buildProductionPayload();const files={};Object.entries(state.layers).forEach(([id,l])=>{if(l.file)files[id]=l.file});state.cart.push({payload,files});renderCart();$('#mdCart').classList.add('open')});
 
 $('#joinForm')?.addEventListener('submit',async e=>{e.preventDefault();const msg=$('#joinMsg');msg.textContent='Sending…';try{const r=await fetch('/api/inquiries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:$('#joinName').value,company:$('#joinCompany').value,email:$('#joinEmail').value,message:$('#joinInterest').value,source:'merchant-signup'})});const j=await r.json();if(!j.ok)throw new Error(j.error||'Could not send');msg.textContent=`Received — inquiry #${j.id}. It is now visible in the MadeDeck admin console.`;e.target.reset()}catch(err){msg.textContent=`Could not send: ${err.message}`}});
-$('#loginForm')?.addEventListener('submit',async e=>{e.preventDefault();const msg=$('#loginMsg');msg.textContent='Signing in…';try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:$('#loginEmail').value,password:$('#loginPassword').value})});const j=await r.json();if(!j.ok)throw new Error(j.error||'Login failed');msg.textContent='';showPage('dashboard');loadOffers();configureDashboard(j.user)}catch(err){msg.textContent='Login failed. Check the test password in GoDaddy Secrets.'}});
+$('#loginForm')?.addEventListener('submit',async e=>{e.preventDefault();const msg=$('#loginMsg');msg.textContent='Signing in…';try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',body:JSON.stringify({email:$('#loginEmail').value,password:$('#loginPassword').value})});const j=await r.json().catch(()=>({ok:false,error:`server_response_${r.status}`}));if(!r.ok||!j.ok)throw new Error(j.error||`login_failed_${r.status}`);msg.textContent='';showPage('dashboard');loadOffers();configureDashboard(j.user)}catch(err){msg.textContent=`Login failed: ${err.message}`;}});
 $('#logoutBtn')?.addEventListener('click',async()=>{await fetch('/api/auth/logout',{method:'POST'});showPage('home')});
 $('#saveProductBtn')?.addEventListener('click',()=>{const n=$('#dashName').value.trim()||'Untitled product',p=Number($('#dashPrice').value||0);const row=document.createElement('div');row.className='saved-row';row.innerHTML=`<span>${n}</span><b>$${p.toFixed(2)}</b>`;$('#savedProducts').prepend(row)});
 $$('[data-offertype]').forEach(b=>b.addEventListener('click',()=>{offerType=b.dataset.offertype;$$('[data-offertype]').forEach(x=>x.classList.toggle('active',x===b))}));
