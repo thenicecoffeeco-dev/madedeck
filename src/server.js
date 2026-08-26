@@ -5,9 +5,12 @@ const cookieParser=require('cookie-parser');
 const crypto=require('crypto');
 const Stripe=require('stripe');
 const {db,verifyPassword,seedUser}=require('./db');
+const {createSwarmPowerRouter,ensureVinnyEntitlement}=require('./swarm-power');
+const {createSystemMessagesRouter}=require('./system-messages');
+const {createDialerRouter}=require('./dialer');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.6.1';
+const APP_VERSION='0.6.0';
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
 function stripeOrderId(obj){
@@ -124,26 +127,10 @@ app.post('/api/stripe/webhook',express.raw({type:'application/json'}),async(req,
 app.use(express.json());
 app.use(express.urlencoded({extended:false}));
 app.use(cookieParser());
-const mockupDir=path.join(publicDir,'mockups');
-const premadeDir=path.join(publicDir,'premades');
-const assetStaticOptions={fallthrough:true,index:false,setHeaders:(res)=>{
-  res.setHeader('Cache-Control','public, max-age=86400');
-  res.setHeader('X-Content-Type-Options','nosniff');
-}};
-app.get('/api/assets/status',(req,res)=>{
-  const samples={
-    mockup:path.join(mockupDir,'tee','front-white.png'),
-    premade:path.join(premadeDir,'cute-faces','10.png')
-  };
-  res.json({ok:true,version:APP_VERSION,public_dir:publicDir,assets:Object.fromEntries(Object.entries(samples).map(([key,file])=>[key,{exists:fs.existsSync(file),bytes:fs.existsSync(file)?fs.statSync(file).size:0,path:path.relative(publicDir,file)}]))});
-});
-app.use('/mockups',express.static(mockupDir,assetStaticOptions));
-app.use('/premades',express.static(premadeDir,assetStaticOptions));
 app.get('/',(req,res)=>{
   try{
     const html=fs.readFileSync(path.join(publicDir,'index.html'),'utf8')
       .replace('href="/styles.css"',`href="/styles.css?v=${APP_VERSION}"`)
-      .replace('href="/admin.css"',`href="/admin.css?v=${APP_VERSION}"`)
       .replace('src="/app.js"',`src="/app.js?v=${APP_VERSION}"`)
       .replace('</body>',`<script src="/cart-v05.js?v=${APP_VERSION}"></script></body>`);
     res.set('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -161,8 +148,23 @@ app.use(express.static(publicDir,{setHeaders:(res,filePath)=>{
 }}));
 const sessions=new Map();
 function session(req){const token=req.cookies.md_session;return token?sessions.get(token):null;}
+function sessionHash(token){return crypto.createHash('sha256').update(String(token||'')).digest('hex');}
+async function durableSession(req){
+  const token=req.cookies.md_session;
+  if(!token)return null;
+  const [rows]=await db().execute(
+    `SELECT u.id,u.email,u.role FROM auth_sessions s JOIN users u ON u.id=s.user_id
+     WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>NOW() AND u.status='active' LIMIT 1`,
+    [sessionHash(token)]
+  );
+  const current=rows[0]||null;
+  if(current)await db().execute('UPDATE auth_sessions SET last_seen_at=NOW() WHERE token_hash=?',[sessionHash(token)]);
+  return current;
+}
 function requireUser(req,res,next){const s=session(req);if(!s)return res.status(401).json({ok:false,error:'login_required'});req.user=s;next();}
-function requirePlatformAdmin(req,res,next){if(req.user?.role!=='platform_admin')return res.status(403).json({ok:false,error:'platform_admin_required'});next();}
+app.use('/api/swarm-power',createSwarmPowerRouter({db,session:durableSession}));
+app.use('/api/system-messages',createSystemMessagesRouter({db,session:durableSession}));
+app.use('/api/dialer',createDialerRouter({db,session:durableSession}));
 function cartRole(req){const s=session(req);if(!s)return 'customer';if(s.role==='platform_admin')return 'owner';return 'merchant';}
 function paymentProviders(){return {
   paypal:!!process.env.PAYPAL_CLIENT_ID,
@@ -179,10 +181,9 @@ function platformEconomics(subtotal){
   return {platform_fee:Number(platformFee.toFixed(2)),merchant_payout:Number(Math.max(0,subtotal-platformFee).toFixed(2))};
 }
 app.get('/health',async(req,res)=>{try{await db().query('SELECT 1');res.json({ok:true,mode:'database',database:'connected',version:APP_VERSION,stripe:{payments:!!stripe,webhook:!!process.env.STRIPE_WEBHOOK_SECRET}});}catch(e){res.status(503).json({ok:false,database:'disconnected',error:e.message});}});
-app.post('/api/auth/login',async(req,res)=>{const email=String(req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const [rows]=await db().execute('SELECT id,email,password_salt,password_hash,role,status FROM users WHERE email=? LIMIT 1',[email]);const u=rows[0];if(!u||u.status!=='active'||!verifyPassword(password,u.password_salt,u.password_hash))return res.status(401).json({ok:false,error:'invalid_credentials'});const token=crypto.randomBytes(32).toString('hex');sessions.set(token,{id:u.id,email:u.email,role:u.role});res.cookie('md_session',token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',maxAge:1000*60*60*12});res.json({ok:true,user:{email:u.email,role:u.role}});});
-app.post('/api/auth/logout',(req,res)=>{if(req.cookies.md_session)sessions.delete(req.cookies.md_session);res.clearCookie('md_session');res.json({ok:true});});
+app.post('/api/auth/login',async(req,res)=>{const email=String(req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const [rows]=await db().execute('SELECT id,email,password_salt,password_hash,role,status FROM users WHERE email=? LIMIT 1',[email]);const u=rows[0];if(!u||u.status!=='active'||!verifyPassword(password,u.password_salt,u.password_hash))return res.status(401).json({ok:false,error:'invalid_credentials'});const token=crypto.randomBytes(32).toString('hex');sessions.set(token,{id:u.id,email:u.email,role:u.role});await db().execute(`INSERT INTO auth_sessions(user_id,token_hash,user_agent,ip_hash,expires_at) VALUES(?,?,?,?,DATE_ADD(NOW(),INTERVAL 12 HOUR))`,[u.id,sessionHash(token),String(req.headers['user-agent']||'').slice(0,500),sessionHash(req.ip||'')]);res.cookie('md_session',token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',maxAge:1000*60*60*12});res.json({ok:true,user:{email:u.email,role:u.role}});});
+app.post('/api/auth/logout',async(req,res)=>{const token=req.cookies.md_session;if(token){sessions.delete(token);await db().execute('UPDATE auth_sessions SET revoked_at=NOW() WHERE token_hash=?',[sessionHash(token)]);}res.clearCookie('md_session');res.json({ok:true});});
 app.get('/api/me',requireUser,(req,res)=>res.json({ok:true,user:req.user}));
-app.post('/api/inquiries',async(req,res)=>{const b=req.body||{};const email=String(b.email||'').trim().toLowerCase();if(!email||!email.includes('@'))return res.status(400).json({ok:false,error:'valid_email_required'});const [r]=await db().execute('INSERT INTO inquiries(name,email,company,source,message) VALUES(?,?,?,?,?)',[String(b.name||'').trim(),email,String(b.company||'').trim()||null,String(b.source||'website').slice(0,100),String(b.message||'').trim()||null]);res.status(201).json({ok:true,id:r.insertId});});
 app.get('/api/cart/context',(req,res)=>res.json({ok:true,role:cartRole(req),providers:paymentProviders(),version:APP_VERSION}));
 app.post('/api/checkout/preview',(req,res)=>{
   const subtotal=Math.max(0,Number(req.body.subtotal||0));
@@ -197,27 +198,13 @@ app.post('/api/checkout/preview',(req,res)=>{
 });
 app.get('/api/offers',requireUser,async(req,res)=>{const [rows]=await db().query('SELECT * FROM offers ORDER BY created_at DESC LIMIT 100');res.json({ok:true,offers:rows});});
 app.post('/api/offers',requireUser,async(req,res)=>{const b=req.body;const type=['store','preorder','bulk'].includes(b.type)?b.type:'store';const access=['public','paid_customer','private_link'].includes(b.access_mode)?b.access_mode:'public';const fulfillment=['direct','office','both'].includes(b.fulfillment_mode)?b.fulfillment_mode:'both';const price=Number(b.retail_price),min=Number(b.minimum_qty||1);if(!b.store_id||!b.title||!Number.isFinite(price)||price<0)return res.status(400).json({ok:false,error:'invalid_offer'});const [r]=await db().execute('INSERT INTO offers(store_id,product_id,type,title,status,access_mode,fulfillment_mode,retail_price,minimum_qty,closes_at) VALUES(?,?,?,?,?,?,?,?,?,?)',[b.store_id,b.product_id||null,type,b.title,'draft',access,fulfillment,price,Math.max(1,min),b.closes_at||null]);res.status(201).json({ok:true,id:r.insertId});});
-app.get('/api/platform/features',requireUser,requirePlatformAdmin,async(req,res)=>{const [rows]=await db().query('SELECT * FROM feature_flags ORDER BY feature_key');res.json({ok:true,features:rows});});
-app.get('/api/platform/monetization',requireUser,requirePlatformAdmin,async(req,res)=>{
-  const [[plans],[modules],[subscriptions],[inquiries],[wallets],[orders]]=await Promise.all([
-    db().query('SELECT * FROM platform_plans ORDER BY sort_order,name'),
-    db().query('SELECT * FROM platform_modules ORDER BY sort_order,name'),
-    db().query(`SELECT s.id,s.plan_code,s.status,s.renews_at,st.name store_name,st.support_email FROM subscriptions s JOIN stores st ON st.id=s.store_id ORDER BY s.created_at DESC LIMIT 200`),
-    db().query('SELECT id,name,email,company,source,status,created_at FROM inquiries ORDER BY created_at DESC LIMIT 200'),
-    db().query('SELECT COALESCE(SUM(balance),0) outstanding_credits,COALESCE(SUM(lifetime_purchased),0) purchased_credits,COALESCE(SUM(lifetime_used),0) used_credits FROM credit_wallets'),
-    db().query(`SELECT COUNT(*) order_count,COALESCE(SUM(total),0) gross_sales,COALESCE(SUM(CASE WHEN status IN ('paid','production','shipped','ready_office','completed') THEN total ELSE 0 END),0) collected_sales FROM orders`)
-  ]);
-  const activeSubscriptions=subscriptions.filter(x=>x.status==='active'||x.status==='trialing').length;
-  const monthlyRecurring=plans.reduce((sum,p)=>sum+(Number(p.monthly_price)*subscriptions.filter(s=>s.plan_code===p.code&&s.status==='active').length),0);
-  res.json({ok:true,summary:{active_subscriptions:activeSubscriptions,total_subscriptions:subscriptions.length,new_inquiries:inquiries.filter(x=>x.status==='new').length,monthly_recurring_revenue:Number(monthlyRecurring.toFixed(2)),...wallets[0],...orders[0]},plans,modules,subscriptions,inquiries});
-});
-app.patch('/api/platform/plans/:id',requireUser,requirePlatformAdmin,async(req,res)=>{const b=req.body||{};const price=Number(b.monthly_price),credits=Number(b.included_credits);if(!Number.isFinite(price)||price<0||!Number.isInteger(credits)||credits<0)return res.status(400).json({ok:false,error:'invalid_plan_values'});await db().execute('UPDATE platform_plans SET monthly_price=?,included_credits=?,active=? WHERE id=?',[price,credits,b.active?1:0,req.params.id]);res.json({ok:true});});
-app.patch('/api/platform/modules/:id',requireUser,requirePlatformAdmin,async(req,res)=>{const b=req.body||{};const price=Number(b.price),credits=Number(b.credit_cost);if(!Number.isFinite(price)||price<0||!Number.isInteger(credits)||credits<0)return res.status(400).json({ok:false,error:'invalid_module_values'});await db().execute('UPDATE platform_modules SET price=?,credit_cost=?,active=? WHERE id=?',[price,credits,b.active?1:0,req.params.id]);res.json({ok:true});});
-app.patch('/api/platform/inquiries/:id',requireUser,requirePlatformAdmin,async(req,res)=>{const status=String(req.body.status||'');if(!['new','contacted','qualified','converted','closed'].includes(status))return res.status(400).json({ok:false,error:'invalid_status'});await db().execute('UPDATE inquiries SET status=? WHERE id=?',[status,req.params.id]);res.json({ok:true});});
+app.get('/api/platform/features',requireUser,async(req,res)=>{if(req.user.role!=='platform_admin')return res.status(403).json({ok:false,error:'forbidden'});const [rows]=await db().query('SELECT * FROM feature_flags ORDER BY feature_key');res.json({ok:true,features:rows});});
 async function boot(){
   await db().query('SELECT 1');
   await seedUser(process.env.SEED_ADMIN_EMAIL,process.env.SEED_ADMIN_PASSWORD,'platform_admin');
   await seedUser(process.env.SEED_MERCHANT_EMAIL,process.env.SEED_MERCHANT_PASSWORD,'merchant_admin');
+  const swarmOwner=await ensureVinnyEntitlement(db());
+  console.log(`Swarm Power owner configured=${swarmOwner.configured} granted=${swarmOwner.granted}`);
   const [merchantRows]=await db().execute('SELECT id FROM users WHERE email=? LIMIT 1',[String(process.env.SEED_MERCHANT_EMAIL||'').toLowerCase()]);
   const merchant=merchantRows[0];
   if(merchant){

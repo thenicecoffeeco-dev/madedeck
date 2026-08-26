@@ -1,12 +1,691 @@
 {
-  "version": "1.0",
-  "products": {
-    "tee": {"colors":["white","black","red","pink","gray","heather-gray","sky-blue","dark-blue","green","yellow"],"views":["front","back","left-sleeve","right-sleeve"],"pattern":"/mockups/tee/{view}-{color}.png"},
-    "hoodie": {"colors":["black","white","gray","red"],"views":["front","back","left-sleeve","right-sleeve"],"pattern":"/mockups/hoodie/{view}-{color}.png"},
-    "polo": {"colors":["white","black","gray","dark-blue","red"],"views":["front","back","left-sleeve","right-sleeve"],"pattern":"/mockups/polo/{view}-{color}.png"},
-    "hat": {"pattern":"/mockups/hat/front-{color}.png"},
-    "koozie": {"pattern":"/mockups/koozie/front-{color}.png"},
-    "towel": {"pattern":"/mockups/towel/front-{color}.png"},
-    "sticker": {"pattern":"/mockups/sticker/{size}.png"}
-  }
+  "version": 1,
+  "generated_at": "2026-08-25T17:52:19.244Z",
+  "count": 76,
+  "assets": [
+    {
+      "product": "hoodie",
+      "view": "back",
+      "color": "black",
+      "path": "/mockups/hoodie/back-black.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-back-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "back",
+      "color": "gray",
+      "path": "/mockups/hoodie/back-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-back-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "back",
+      "color": "red",
+      "path": "/mockups/hoodie/back-red.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-back-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "back",
+      "color": "white",
+      "path": "/mockups/hoodie/back-white.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-back-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "front",
+      "color": "black",
+      "path": "/mockups/hoodie/front-black.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-front-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "front",
+      "color": "gray",
+      "path": "/mockups/hoodie/front-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-front-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "front",
+      "color": "red",
+      "path": "/mockups/hoodie/front-red.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-front-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "front",
+      "color": "white",
+      "path": "/mockups/hoodie/front-white.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-front-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "left-sleeve",
+      "color": "black",
+      "path": "/mockups/hoodie/left-sleeve-black.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-left-sleeve-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "left-sleeve",
+      "color": "gray",
+      "path": "/mockups/hoodie/left-sleeve-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-left-sleeve-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "left-sleeve",
+      "color": "red",
+      "path": "/mockups/hoodie/left-sleeve-red.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-left-sleeve-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "left-sleeve",
+      "color": "white",
+      "path": "/mockups/hoodie/left-sleeve-white.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-left-sleeve-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "right-sleeve",
+      "color": "black",
+      "path": "/mockups/hoodie/right-sleeve-black.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-right-sleeve-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "right-sleeve",
+      "color": "gray",
+      "path": "/mockups/hoodie/right-sleeve-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-right-sleeve-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "right-sleeve",
+      "color": "red",
+      "path": "/mockups/hoodie/right-sleeve-red.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-right-sleeve-gray.png"
+    },
+    {
+      "product": "hoodie",
+      "view": "right-sleeve",
+      "color": "white",
+      "path": "/mockups/hoodie/right-sleeve-white.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/hoodie-right-sleeve-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "back",
+      "color": "black",
+      "path": "/mockups/polo/back-black.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-back-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "back",
+      "color": "dark-blue",
+      "path": "/mockups/polo/back-dark-blue.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-back-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "back",
+      "color": "gray",
+      "path": "/mockups/polo/back-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-back-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "back",
+      "color": "red",
+      "path": "/mockups/polo/back-red.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-back-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "back",
+      "color": "white",
+      "path": "/mockups/polo/back-white.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-back-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "front",
+      "color": "black",
+      "path": "/mockups/polo/front-black.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-front-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "front",
+      "color": "dark-blue",
+      "path": "/mockups/polo/front-dark-blue.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-front-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "front",
+      "color": "gray",
+      "path": "/mockups/polo/front-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-front-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "front",
+      "color": "red",
+      "path": "/mockups/polo/front-red.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-front-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "front",
+      "color": "white",
+      "path": "/mockups/polo/front-white.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-front-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "left-sleeve",
+      "color": "black",
+      "path": "/mockups/polo/left-sleeve-black.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-left-sleeve-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "left-sleeve",
+      "color": "dark-blue",
+      "path": "/mockups/polo/left-sleeve-dark-blue.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-left-sleeve-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "left-sleeve",
+      "color": "gray",
+      "path": "/mockups/polo/left-sleeve-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-left-sleeve-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "left-sleeve",
+      "color": "red",
+      "path": "/mockups/polo/left-sleeve-red.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-left-sleeve-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "left-sleeve",
+      "color": "white",
+      "path": "/mockups/polo/left-sleeve-white.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-left-sleeve-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "right-sleeve",
+      "color": "black",
+      "path": "/mockups/polo/right-sleeve-black.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-right-sleeve-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "right-sleeve",
+      "color": "dark-blue",
+      "path": "/mockups/polo/right-sleeve-dark-blue.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-right-sleeve-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "right-sleeve",
+      "color": "gray",
+      "path": "/mockups/polo/right-sleeve-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-right-sleeve-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "right-sleeve",
+      "color": "red",
+      "path": "/mockups/polo/right-sleeve-red.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-right-sleeve-gray.png"
+    },
+    {
+      "product": "polo",
+      "view": "right-sleeve",
+      "color": "white",
+      "path": "/mockups/polo/right-sleeve-white.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/polo-right-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "back",
+      "color": "black",
+      "path": "/mockups/tee/back-black.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-back-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "back",
+      "color": "dark-blue",
+      "path": "/mockups/tee/back-dark-blue.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-back-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "back",
+      "color": "gray",
+      "path": "/mockups/tee/back-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-back-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "back",
+      "color": "green",
+      "path": "/mockups/tee/back-green.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-back-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "back",
+      "color": "heather-gray",
+      "path": "/mockups/tee/back-heather-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-back-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "back",
+      "color": "pink",
+      "path": "/mockups/tee/back-pink.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-back-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "back",
+      "color": "red",
+      "path": "/mockups/tee/back-red.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-back-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "back",
+      "color": "sky-blue",
+      "path": "/mockups/tee/back-sky-blue.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-back-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "back",
+      "color": "white",
+      "path": "/mockups/tee/back-white.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-back-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "back",
+      "color": "yellow",
+      "path": "/mockups/tee/back-yellow.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-back-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "front",
+      "color": "black",
+      "path": "/mockups/tee/front-black.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-front-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "front",
+      "color": "dark-blue",
+      "path": "/mockups/tee/front-dark-blue.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-front-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "front",
+      "color": "gray",
+      "path": "/mockups/tee/front-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-front-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "front",
+      "color": "green",
+      "path": "/mockups/tee/front-green.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-front-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "front",
+      "color": "heather-gray",
+      "path": "/mockups/tee/front-heather-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-front-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "front",
+      "color": "pink",
+      "path": "/mockups/tee/front-pink.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-front-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "front",
+      "color": "red",
+      "path": "/mockups/tee/front-red.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-front-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "front",
+      "color": "sky-blue",
+      "path": "/mockups/tee/front-sky-blue.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-front-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "front",
+      "color": "white",
+      "path": "/mockups/tee/front-white.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-front-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "front",
+      "color": "yellow",
+      "path": "/mockups/tee/front-yellow.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-front-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "left-sleeve",
+      "color": "black",
+      "path": "/mockups/tee/left-sleeve-black.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-left-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "left-sleeve",
+      "color": "dark-blue",
+      "path": "/mockups/tee/left-sleeve-dark-blue.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-left-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "left-sleeve",
+      "color": "gray",
+      "path": "/mockups/tee/left-sleeve-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-left-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "left-sleeve",
+      "color": "green",
+      "path": "/mockups/tee/left-sleeve-green.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-left-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "left-sleeve",
+      "color": "heather-gray",
+      "path": "/mockups/tee/left-sleeve-heather-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-left-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "left-sleeve",
+      "color": "pink",
+      "path": "/mockups/tee/left-sleeve-pink.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-left-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "left-sleeve",
+      "color": "red",
+      "path": "/mockups/tee/left-sleeve-red.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-left-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "left-sleeve",
+      "color": "sky-blue",
+      "path": "/mockups/tee/left-sleeve-sky-blue.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-left-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "left-sleeve",
+      "color": "white",
+      "path": "/mockups/tee/left-sleeve-white.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-left-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "left-sleeve",
+      "color": "yellow",
+      "path": "/mockups/tee/left-sleeve-yellow.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-left-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "right-sleeve",
+      "color": "black",
+      "path": "/mockups/tee/right-sleeve-black.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-right-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "right-sleeve",
+      "color": "dark-blue",
+      "path": "/mockups/tee/right-sleeve-dark-blue.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-right-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "right-sleeve",
+      "color": "gray",
+      "path": "/mockups/tee/right-sleeve-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-right-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "right-sleeve",
+      "color": "green",
+      "path": "/mockups/tee/right-sleeve-green.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-right-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "right-sleeve",
+      "color": "heather-gray",
+      "path": "/mockups/tee/right-sleeve-heather-gray.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-right-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "right-sleeve",
+      "color": "pink",
+      "path": "/mockups/tee/right-sleeve-pink.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-right-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "right-sleeve",
+      "color": "red",
+      "path": "/mockups/tee/right-sleeve-red.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-right-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "right-sleeve",
+      "color": "sky-blue",
+      "path": "/mockups/tee/right-sleeve-sky-blue.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-right-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "right-sleeve",
+      "color": "white",
+      "path": "/mockups/tee/right-sleeve-white.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-right-sleeve-gray.png"
+    },
+    {
+      "product": "tee",
+      "view": "right-sleeve",
+      "color": "yellow",
+      "path": "/mockups/tee/right-sleeve-yellow.png",
+      "width": 1600,
+      "height": 2000,
+      "production_source": "/mockup-masters/tee-right-sleeve-gray.png"
+    }
+  ]
 }
