@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MadeDeck Game World — Entry</title>
+<meta name="description" content="Entry point for the upcoming MadeDeck shared 3D creator environment.">
+<link rel="stylesheet" href="/styles.css">
+<style>
+.game-entry{min-height:100vh;background:radial-gradient(circle at 50% 15%,#253247 0,#101722 43%,#070a0f 100%);color:#fff;display:grid;grid-template-rows:auto 1fr}
+.game-entry header{height:76px;padding:0 max(20px,calc((100vw - 1220px)/2));display:flex;align-items:center;gap:14px;border-bottom:1px solid rgba(255,255,255,.18);background:rgba(7,10,15,.84)}
+.game-entry .brand{color:#fff}.game-entry .brand-mark{background:#dfff00;color:#000}.game-entry-nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.game-entry-nav a{display:inline-flex;align-items:center;min-height:42px;padding:9px 14px;border:1px solid rgba(255,255,255,.65);border-radius:10px;color:#fff;text-decoration:none;font-weight:850}
+.game-entry-nav a.primary{background:#dfff00;color:#000;border-color:#dfff00}
+.game-entry-main{width:min(900px,calc(100% - 40px));margin:auto;text-align:center;padding:70px 0}
+.game-entry-badge{display:inline-block;border:1px solid #dfff00;color:#dfff00;border-radius:999px;padding:7px 12px;font:800 12px ui-monospace,monospace;letter-spacing:.08em}
+.game-entry h1{font-size:clamp(42px,8vw,88px);line-height:.94;letter-spacing:-.06em;margin:22px 0 18px}.game-entry p{max-width:680px;margin:0 auto;color:#cbd5e1;font-size:18px;line-height:1.65}
+.game-entry-panel{max-width:680px;margin:34px auto 0;border:1px solid rgba(255,255,255,.2);border-radius:18px;background:rgba(255,255,255,.06);padding:22px}
+.game-entry-panel strong{display:block;font-size:18px}.game-entry-panel span{display:block;color:#94a3b8;margin-top:7px}.game-entry-panel button{margin-top:18px;border:0;border-radius:10px;padding:12px 18px;background:#334155;color:#cbd5e1;font-weight:900;cursor:not-allowed}
+@media(max-width:720px){.game-entry header{height:auto;min-height:76px;padding:12px 14px;flex-wrap:wrap}.game-entry-nav{width:100%;margin-left:0}.game-entry-main{padding:45px 0}}
+</style>
+</head>
+<body class="game-entry">
+<header>
+<a class="brand" href="https://go.madedeck.com"><span class="brand-mark">M</span><span>MadeDeck</span></a>
+<nav class="game-entry-nav" aria-label="Game entry navigation">
+<a href="https://go.madedeck.com">Home</a>
+<a class="primary" href="/">Design platform</a>
+</nav>
+</header>
+<main class="game-entry-main">
+<span class="game-entry-badge">WORLD GATE · PREPARING</span>
+<h1>Enter the MadeDeck world.</h1>
+<p>This gateway is reserved for the upcoming shared 3D creator experience. The game environment is not active yet; your current designing, storefront, and account tools remain in the main MadeDeck platform.</p>
+<section class="game-entry-panel" aria-labelledby="gameStatus">
+<strong id="gameStatus">Game access is not open yet.</strong>
+<span>This page establishes the permanent entry point without enabling unfinished gameplay, rewards, advertisements, or multiplayer services.</span>
+<button type="button" disabled aria-disabled="true">World offline</button>
+</section>
+</main>
+</body>
+</html>
