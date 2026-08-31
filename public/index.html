@@ -17,7 +17,7 @@
     <button data-page="join">Join</button>
     <button data-page="login">Merchant sign in</button>
   </nav>
-  <button class="btn btn-dark desktop-cta" data-page="join">Open a store</button>
+  <button class="md-gear" id="mdPreferencesGear" type="button" title="Preferences" aria-label="Open accessibility and behavior preferences">⚙</button>\n  <button class="btn btn-dark desktop-cta" data-page="join">Open a store</button>
 </header>
 
 <main>
@@ -217,8 +217,29 @@
     </div>
   </div>
 </section>
-</main>
+
+<div class="md-preferences-backdrop" id="mdPreferences" role="dialog" aria-modal="true" aria-labelledby="mdPreferencesTitle" hidden>
+  <section class="md-preferences-panel">
+    <button class="md-preferences-close" id="mdPreferencesClose" type="button" aria-label="Close preferences">×</button>
+    <div class="eyebrow">MADEDECK PREFERENCES · GEAR OF DOOM</div>
+    <h2 id="mdPreferencesTitle">Accessibility and behavior</h2>
+    <p>Contrast changes apply to interface controls only. Products and artwork keep their original colors.</p>
+    <div class="md-preferences-grid">
+      <label>Interface contrast<select id="mdPrefContrast"><option value="default">MadeDeck default</option><option value="high-light">High contrast · light</option><option value="high-dark">High contrast · dark</option></select></label>
+      <label>Voice<select id="mdPrefVoice"><option value="">System default</option></select></label>
+      <label class="md-pref-toggle"><input id="mdPrefMotion" type="checkbox"> Reduce interface motion</label>
+      <label class="md-pref-toggle"><input id="mdPrefFrenzy" type="checkbox"> Lizard click warning</label>
+      <label class="md-pref-toggle"><input id="mdPrefTTS" type="checkbox"> Speak click warnings</label>
+      <label>Voice volume<input id="mdPrefVolume" type="range" min="0" max="1" step=".1"></label>
+      <label>Lizard phrase<input id="mdPrefLizard" maxlength="32"></label>
+      <label>50-click phrase<input id="mdPrefStop" maxlength="32"></label>
+    </div>
+    <p class="md-safe-note"><b>Emergency reset:</b> add <code>?safe-ui=1</code> to the address to bypass saved contrast.</p>
+    <div class="md-preferences-actions"><button class="btn btn-dark" id="mdPreferencesSave" type="button">Save preferences</button><button class="btn btn-light" id="mdPreferencesVoiceTest" type="button">Test voice</button><button class="btn btn-light" id="mdPreferencesReset" type="button">Reset</button></div>
+  </section>
+</div>
+<div class="md-a11y-toast" id="mdA11yToast" role="status" aria-live="polite" hidden></div>\n</main>
 <footer><div class="shell footer-inner"><div class="brand"><span class="brand-mark">M</span>MadeDeck</div><span>Web-to-print + fulfillment for creators and small brands.</span></div></footer>
-<script src="/app.js"></script>
+<script src="/app.js"></script>\n<script src="/accessibility.js"></script>
 </body>
 </html>
