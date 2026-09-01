@@ -23,6 +23,10 @@ function audienceMatches(audience, context) {
   if (rule.userIds && !rule.userIds.map(Number).includes(Number(context.user.id))) return false;
   if (rule.roles && !rule.roles.includes(context.user.role)) return false;
   if (rule.tiers && !rule.tiers.includes(context.tier)) return false;
+  if (rule.accountIds && !rule.accountIds.map(Number).includes(Number(context.accountId))) return false;
+  if (rule.accountKeys && !rule.accountKeys.includes(context.accountKey)) return false;
+  if (rule.storeIds && !rule.storeIds.map(Number).includes(Number(context.storeId))) return false;
+  if (rule.profileKeys && !rule.profileKeys.includes(context.profileKey)) return false;
   return true;
 }
 
@@ -42,7 +46,27 @@ function createSystemMessagesRouter({ db, session }) {
       );
       tier = rows[0]?.tier_code || 'FREE';
     }
-    return { user, tier, channel: CHANNELS.has(req.query.channel) ? req.query.channel : 'web' };
+    let membership = null;
+    if (user) {
+      const [memberships] = await db().execute(
+        `SELECT am.account_id,am.store_id,am.profile_key,am.role_key,a.account_key
+         FROM account_memberships am JOIN accounts a ON a.id=am.account_id
+         WHERE am.user_id=? AND am.status='active' AND a.status='active'
+         ORDER BY (a.account_key='madedeck') DESC,am.id LIMIT 20`,
+        [user.id]
+      );
+      const requested = String(req.query.account_key || '').trim();
+      membership = (requested && memberships.find(row => row.account_key === requested)) || memberships[0] || null;
+    }
+    return {
+      user, tier,
+      accountId: membership?.account_id || null,
+      accountKey: membership?.account_key || null,
+      storeId: membership?.store_id || null,
+      profileKey: membership?.profile_key || null,
+      role: membership?.role_key || user?.role || null,
+      channel: CHANNELS.has(req.query.channel) ? req.query.channel : 'web'
+    };
   }
 
   async function requireOwner(req, res, next) {
@@ -60,14 +84,19 @@ function createSystemMessagesRouter({ db, session }) {
     const current = await context(req);
     const [rows] = await db().query(
       `SELECT message_key,message_type,severity,presentation,title,body,action_label,action_url,
-              icon_key,audience_json,countdown_at,starts_at,ends_at,priority,dismissible,
+              icon_key,audience_json,account_id,store_id,profile_key,countdown_at,starts_at,ends_at,priority,dismissible,
               requires_acknowledgment,sticky_until_resolved,published_at
        FROM system_messages
        WHERE status IN ('published','scheduled') AND (starts_at IS NULL OR starts_at<=NOW())
          AND (ends_at IS NULL OR ends_at>NOW())
        ORDER BY priority DESC,published_at DESC LIMIT 100`
     );
-    const messages = rows.filter(row => audienceMatches(row.audience_json, current)).map(row => ({
+    const messages = rows.filter(row =>
+      (!row.account_id || Number(row.account_id) === Number(current.accountId)) &&
+      (!row.store_id || Number(row.store_id) === Number(current.storeId)) &&
+      (!row.profile_key || row.profile_key === current.profileKey) &&
+      audienceMatches(row.audience_json, current)
+    ).map(row => ({
       ...row, audience: undefined, audience_json: undefined,
       countdown_at: row.countdown_at ? new Date(row.countdown_at).toISOString() : null
     }));
@@ -91,13 +120,22 @@ function createSystemMessagesRouter({ db, session }) {
     if (!current.user) return res.status(401).json({ ok: false, error: 'login_required' });
     const event = ['seen','read','dismissed','acknowledged'].includes(req.body?.event) ? req.body.event : 'seen';
     const channel = CHANNELS.has(req.body?.channel) ? req.body.channel : current.channel;
-    const [messages] = await db().execute('SELECT id,requires_acknowledgment FROM system_messages WHERE message_key=? LIMIT 1', [req.params.messageKey]);
-    if (!messages[0]) return res.status(404).json({ ok: false, error: 'message_not_found' });
+    const [messages] = await db().execute(
+      'SELECT id,requires_acknowledgment,account_id,store_id,profile_key,audience_json FROM system_messages WHERE message_key=? LIMIT 1',
+      [req.params.messageKey]
+    );
+    const message = messages[0];
+    const allowed = message &&
+      (!message.account_id || Number(message.account_id) === Number(current.accountId)) &&
+      (!message.store_id || Number(message.store_id) === Number(current.storeId)) &&
+      (!message.profile_key || message.profile_key === current.profileKey) &&
+      audienceMatches(message.audience_json, current);
+    if (!allowed) return res.status(404).json({ ok: false, error: 'message_not_found' });
     const column = { seen:'first_seen_at',read:'read_at',dismissed:'dismissed_at',acknowledged:'acknowledged_at' }[event];
     await db().execute(
       `INSERT INTO system_message_receipts(message_id,user_id,channel,${column},last_seen_at)
        VALUES(?,?,?,NOW(),NOW()) ON DUPLICATE KEY UPDATE ${column}=COALESCE(${column},NOW()),last_seen_at=NOW()`,
-      [messages[0].id, current.user.id, channel]
+      [message.id, current.user.id, channel]
     );
     res.json({ ok: true, event });
   });
@@ -124,11 +162,11 @@ function createSystemMessagesRouter({ db, session }) {
     const audience = body.audience && typeof body.audience === 'object' ? body.audience : { public: false, roles: ['platform_admin'], channels: ['web','desktop'] };
     await db().execute(
       `INSERT INTO system_messages
-       (message_key,created_by_user_id,message_type,severity,presentation,status,title,body,action_label,
+       (message_key,created_by_user_id,account_id,store_id,profile_key,message_type,severity,presentation,status,title,body,action_label,
         action_url,icon_key,audience_json,countdown_at,starts_at,ends_at,priority,dismissible,
         requires_acknowledgment,sticky_until_resolved,published_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,IF(?='published',NOW(),NULL))`,
-      [key,req.user.id,type,severity,presentation,status,title,messageBody,body.action_label||null,
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,IF(?='published',NOW(),NULL))`,
+      [key,req.user.id,body.account_id||null,body.store_id||null,body.profile_key||null,type,severity,presentation,status,title,messageBody,body.action_label||null,
        body.action_url||null,body.icon_key||null,JSON.stringify(audience),body.countdown_at||null,
        body.starts_at||null,body.ends_at||null,Number(body.priority||50),body.dismissible!==false,
        body.requires_acknowledgment===true,body.sticky_until_resolved===true,status]
