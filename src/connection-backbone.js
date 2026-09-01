@@ -145,7 +145,7 @@ function createConnectionBackbone({ db, cookieName='md_session', production=true
   }).catch(next));
 
   router.get('/alerts', requireSession, async (req,res,next) => {
-    try { const params=[req.mdSession.userId,req.mdSession.storeId];let sql=`SELECT id,user_id,store_id,type,title,body,read_at,created_at FROM notifications WHERE (user_id=? OR user_id IS NULL) AND (store_id=? OR store_id IS NULL)`;if(req.mdSession.role!=='super'&&req.mdSession.role!=='operator')sql+=` AND type NOT LIKE 'admin.%'`;sql+=' ORDER BY created_at DESC LIMIT 100';const [rows]=await db.execute(sql,params);res.json({ok:true,alerts:rows}) } catch(error){next(error)}
+    try { const params=[req.mdSession.userId,req.mdSession.accountId,req.mdSession.storeId];let sql=`SELECT id,user_id,account_id,store_id,type,title,body,read_at,created_at FROM notifications WHERE (user_id=? OR user_id IS NULL) AND (account_id=? OR (account_id IS NULL AND store_id=?))`;if(req.mdSession.role!=='super'&&req.mdSession.role!=='operator')sql+=` AND type NOT LIKE 'admin.%'`;sql+=' ORDER BY created_at DESC LIMIT 100';const [rows]=await db.execute(sql,params);res.json({ok:true,alerts:rows}) } catch(error){next(error)}
   });
 
   router.get('/reconcile', requireSession, requireRoles('super','operator','merchant','partner'), async (req,res,next) => {
