@@ -191,7 +191,7 @@ function requirePlatformAdmin(req,res,next){if(req.user?.role!=='platform_admin'
 app.use('/api/swarm-power',createSwarmPowerRouter({db,session:durableSession}));
 app.use('/api/dialer',createDialerRouter({db,session:durableSession}));
 app.use('/api/system-messages',createSystemMessagesRouter({db,session:durableSession}));
-app.use('/api/backbone',createConnectionBackbone({db,production:process.env.NODE_ENV==='production'}).router);
+app.use('/api/backbone',createConnectionBackbone({db:db(),production:process.env.NODE_ENV==='production'}).router);
 function cartRole(req){const s=session(req);if(!s)return 'customer';if(s.role==='platform_admin')return 'owner';return 'merchant';}
 function paymentProviders(){return {
   paypal:!!process.env.PAYPAL_CLIENT_ID,
