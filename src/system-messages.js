@@ -21,7 +21,7 @@ function audienceMatches(audience, context) {
   if (!context.user) return false;
   if (rule.channels && !rule.channels.includes(context.channel)) return false;
   if (rule.userIds && !rule.userIds.map(Number).includes(Number(context.user.id))) return false;
-  if (rule.roles && !rule.roles.includes(context.user.role)) return false;
+  if (rule.roles && !rule.roles.includes(context.role || context.user.role)) return false;
   if (rule.tiers && !rule.tiers.includes(context.tier)) return false;
   if (rule.accountIds && !rule.accountIds.map(Number).includes(Number(context.accountId))) return false;
   if (rule.accountKeys && !rule.accountKeys.includes(context.accountKey)) return false;
