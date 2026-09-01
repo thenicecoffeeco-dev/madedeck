@@ -11,7 +11,7 @@ const {createSystemMessagesRouter}=require('./system-messages');
 const {createConnectionBackbone}=require('./connection-backbone');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.7.0';
+const APP_VERSION='0.7.1';
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
 function stripeOrderId(obj){
