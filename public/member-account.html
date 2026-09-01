@@ -63,6 +63,7 @@ const api={version:'1.1.0',mount(target,options={}){const host=typeof target==='
   const mockups={
     'Final Boss Tee':'/mockups/tee/front-black.png',
     'Respawn Hoodie':'/mockups/hoodie/front-gray.png',
+    'Nyx Logo Stickers · 250':'/mockups/sticker/2x2.png',
     'Moon Garden Tee':'/mockups/tee/front-pink.png',
     'Studio Polo':'/mockups/polo/front-white.png',
     'Bayou Local Tee':'/mockups/tee/front-green.png',
@@ -74,6 +75,7 @@ const api={version:'1.1.0',mount(target,options={}){const host=typeof target==='
     if(value.includes('polo'))return'/mockups/polo/front-white.png';
     if(value.includes('hat')||value.includes('snapback'))return'/mockups/hat/front-black.png';
     if(value.includes('towel'))return'/mockups/towel/front-black.png';
+    if(value.includes('sticker')||value.includes('label'))return'/mockups/sticker/2x2.png';
     if(value.includes('kooz')||value.includes('cold keeper'))return'/mockups/koozie/front-black.png';
     if(value.includes('tee')||value.includes('shirt'))return'/mockups/tee/front-white.png';
     return null;
@@ -88,6 +90,13 @@ const api={version:'1.1.0',mount(target,options={}){const host=typeof target==='
   }
   new MutationObserver(upgrade).observe(document.body,{childList:true,subtree:true});
   upgrade();
+})();
+</script>
+<script>
+(()=>{
+  const canonical='/text.html?v=0.7.1';
+  function bind(){document.querySelectorAll('iframe.editorFrame').forEach(frame=>{if(frame.getAttribute('src')!==canonical)frame.setAttribute('src',canonical)})}
+  new MutationObserver(bind).observe(document.body,{childList:true,subtree:true});bind();
 })();
 </script>
 <script>
