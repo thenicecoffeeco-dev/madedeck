@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS product_mockups (
 ALTER TABLE system_messages ADD COLUMN IF NOT EXISTS account_id BIGINT UNSIGNED NULL AFTER created_by_user_id;
 ALTER TABLE system_messages ADD COLUMN IF NOT EXISTS store_id BIGINT UNSIGNED NULL AFTER account_id;
 ALTER TABLE system_messages ADD COLUMN IF NOT EXISTS profile_key VARCHAR(100) NULL AFTER store_id;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS account_id BIGINT UNSIGNED NULL AFTER user_id;
 
 INSERT INTO accounts(account_key,account_type,name,status,metadata_json) VALUES
 ('madedeck','platform','MadeDeck Platform','active',JSON_OBJECT('fixture','stable')),
