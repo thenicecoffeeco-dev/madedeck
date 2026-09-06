@@ -127,6 +127,11 @@ async function runConfiguredMigrations({db,mode='check',migrationsDir=path.join(
   if(normalized==='off')return {mode:'off',migrations:[]};
   const connection=await db.getConnection();
   try{
+    if(normalized==='check'&&!(await tableExists(connection,'schema_migrations'))){
+      const markers=['users','stores','products','orders','offers','subscriptions','audit_log'];
+      const foundation=(await Promise.all(markers.map(name=>tableExists(connection,name)))).every(Boolean);
+      return {mode:'check',ready:foundation,migrations:MIGRATIONS.map((key,index)=>({key,status:index===0&&foundation?'legacy_baseline':'pending',checksum_match:true}))};
+    }
     await ensureLedger(connection);
     await baselineFoundation(connection);
     const before=await status(connection,migrationsDir);
