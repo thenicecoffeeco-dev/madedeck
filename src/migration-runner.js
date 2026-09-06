@@ -40,7 +40,7 @@ function splitSql(source){
       }
       continue;
     }
-    if(ch==="'"||ch==='"`'||ch==='"'){quote=ch;current+=ch;continue;}
+    if(ch==="'"||ch==='`'||ch==='"'){quote=ch;current+=ch;continue;}
     if(ch===';'){if(current.trim())statements.push(current.trim());current='';continue;}
     current+=ch;
   }
