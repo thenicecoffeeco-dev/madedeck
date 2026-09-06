@@ -91,6 +91,21 @@ async function status(connection,migrationsDir){
   });
 }
 
+async function executePortable(connection,statement){
+  const conditional=statement.match(/^ALTER\s+TABLE\s+`?([A-Za-z0-9_]+)`?\s+ADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\s+`?([A-Za-z0-9_]+)`?\s+/i);
+  if(conditional){
+    const [,tableName,columnName]=conditional;
+    const [rows]=await connection.execute(
+      'SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=? LIMIT 1',
+      [tableName,columnName]
+    );
+    if(rows.length)return {skipped:true,reason:'column_exists'};
+    statement=statement.replace(/\s+IF\s+NOT\s+EXISTS/i,'');
+  }
+  await connection.query(statement);
+  return {skipped:false};
+}
+
 async function applyOne(connection,migrationsDir,key){
   const file=fs.readFileSync(path.join(migrationsDir,key),'utf8');
   const hash=checksum(file),statements=splitSql(file);
@@ -108,7 +123,7 @@ async function applyOne(connection,migrationsDir,key){
   );
   for(let index=start;index<statements.length;index++){
     try{
-      await connection.query(statements[index]);
+      await executePortable(connection,statements[index]);
       await connection.execute('UPDATE schema_migrations SET last_statement=? WHERE migration_key=?',[index+1,key]);
     }catch(error){
       await connection.execute("UPDATE schema_migrations SET status='failed',error_text=? WHERE migration_key=?",[String(error.message||error).slice(0,4000),key]);
@@ -144,4 +159,4 @@ async function runConfiguredMigrations({db,mode='check',migrationsDir=path.join(
   }finally{connection.release();}
 }
 
-module.exports={MIGRATIONS,splitSql,checksum,runConfiguredMigrations};
+module.exports={MIGRATIONS,splitSql,checksum,executePortable,runConfiguredMigrations};
