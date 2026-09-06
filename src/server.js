@@ -12,7 +12,7 @@ const {createConnectionBackbone}=require('./connection-backbone');
 const {runConfiguredMigrations}=require('./migration-runner');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.7.2';
+const APP_VERSION='0.7.3';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -291,8 +291,13 @@ async function boot(){
   console.log(`Database migrations mode=${migrationState.mode} ready=${migrationState.ready}`);
   await seedUser(process.env.SEED_ADMIN_EMAIL,process.env.SEED_ADMIN_PASSWORD,'platform_admin');
   await seedUser(process.env.SEED_MERCHANT_EMAIL,process.env.SEED_MERCHANT_PASSWORD,'merchant_admin');
-  const swarmOwner=await ensureVinnyEntitlement(db());
-  console.log(`Swarm Power owner configured=${swarmOwner.configured} granted=${swarmOwner.granted}`);
+  try{
+    const swarmOwner=await ensureVinnyEntitlement(db());
+    console.log(`Swarm Power owner configured=${swarmOwner.configured} granted=${swarmOwner.granted}`);
+  }catch(error){
+    migrationState={...migrationState,ready:false,blocking_error:'optional_schema_incomplete'};
+    console.warn('Swarm Power initialization deferred until migrations are applied:',error.message);
+  }
   const [merchantRows]=await db().execute('SELECT id FROM users WHERE email=? LIMIT 1',[String(process.env.SEED_MERCHANT_EMAIL||'').toLowerCase()]);
   const merchant=merchantRows[0];
   if(merchant){
