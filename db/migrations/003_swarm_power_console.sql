@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS power_jobs (
   INDEX idx_power_job_state(state,created_at),
   CONSTRAINT fk_power_job_function FOREIGN KEY(function_id) REFERENCES power_functions(id) ON DELETE RESTRICT,
   CONSTRAINT fk_power_job_user FOREIGN KEY(requested_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
-+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS swarm_missions (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
