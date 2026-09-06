@@ -12,7 +12,7 @@ const {createConnectionBackbone}=require('./connection-backbone');
 const {runConfiguredMigrations}=require('./migration-runner');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.7.4';
+const APP_VERSION='0.7.5';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
