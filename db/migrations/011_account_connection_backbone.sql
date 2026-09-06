@@ -1,5 +1,6 @@
 -- MadeDeck 011: account isolation + connection backbone
 -- Additive MySQL 8 migration. Apply after 010_saas_owner_command_center.sql.
+-- Foreign references are enforced by application services for restored-schema portability.
 
 CREATE TABLE IF NOT EXISTS accounts (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -26,10 +27,7 @@ CREATE TABLE IF NOT EXISTS account_memberships (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_account_user_role(account_id,user_id,role_key),
   INDEX idx_membership_user_status(user_id,status),
-  INDEX idx_membership_store_role(store_id,role_key),
-  CONSTRAINT fk_membership_account FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE,
-  CONSTRAINT fk_membership_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT fk_membership_store FOREIGN KEY(store_id) REFERENCES stores(id) ON DELETE SET NULL
+  INDEX idx_membership_store_role(store_id,role_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS session_key CHAR(36) NULL;
@@ -59,9 +57,7 @@ CREATE TABLE IF NOT EXISTS provider_connections (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_provider_owner(account_id,store_id,provider,external_account_ref),
-  INDEX idx_provider_health(account_id,status),
-  CONSTRAINT fk_provider_account FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE,
-  CONSTRAINT fk_provider_store FOREIGN KEY(store_id) REFERENCES stores(id) ON DELETE CASCADE
+  INDEX idx_provider_health(account_id,status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS idempotency_records (
@@ -76,8 +72,7 @@ CREATE TABLE IF NOT EXISTS idempotency_records (
   expires_at DATETIME NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_idempotency_account(account_id,idempotency_key),
-  CONSTRAINT fk_idempotency_account FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
+  UNIQUE KEY uq_idempotency_account(account_id,idempotency_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS event_outbox (
@@ -100,9 +95,7 @@ CREATE TABLE IF NOT EXISTS event_outbox (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   completed_at DATETIME NULL,
   INDEX idx_outbox_worker(status,next_attempt_at),
-  INDEX idx_outbox_scope(account_id,store_id,event_type),
-  CONSTRAINT fk_outbox_account FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE,
-  CONSTRAINT fk_outbox_store FOREIGN KEY(store_id) REFERENCES stores(id) ON DELETE CASCADE
+  INDEX idx_outbox_scope(account_id,store_id,event_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS product_mockups (
@@ -114,8 +107,7 @@ CREATE TABLE IF NOT EXISTS product_mockups (
   status ENUM('active','missing','invalid','retired') NOT NULL DEFAULT 'active',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_product_mockup(product_id,color_key,view_key),
-  CONSTRAINT fk_mockup_product FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
+  UNIQUE KEY uq_product_mockup(product_id,color_key,view_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 ALTER TABLE system_messages ADD COLUMN IF NOT EXISTS account_id BIGINT UNSIGNED NULL AFTER created_by_user_id;

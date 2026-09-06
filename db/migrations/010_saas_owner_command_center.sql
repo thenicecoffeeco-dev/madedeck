@@ -1,6 +1,7 @@
 -- Unified MadeDeck SaaS owner command center.
 -- Adds non-destructive money/allowance overrides, inquiry tracking and a
 -- normalized usage stream. Apply after 009_runtime_gap_closure.sql.
+-- Cross-table references are enforced by application services for restored-schema portability.
 
 CREATE TABLE IF NOT EXISTS commerce_overrides (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -19,8 +20,6 @@ CREATE TABLE IF NOT EXISTS commerce_overrides (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_commerce_override(entity_type,entity_key,scope_type,scope_key),
-  CONSTRAINT fk_commerce_override_user FOREIGN KEY(scope_user_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT fk_commerce_override_actor FOREIGN KEY(updated_by_user_id) REFERENCES users(id) ON DELETE RESTRICT,
   CONSTRAINT chk_commerce_scope CHECK ((scope_type='platform' AND scope_user_id IS NULL) OR (scope_type='user' AND scope_user_id IS NOT NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -42,9 +41,7 @@ CREATE TABLE IF NOT EXISTS sales_inquiries (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_sales_inquiry_pipeline(status,created_at),
-  INDEX idx_sales_inquiry_email(email),
-  CONSTRAINT fk_sales_inquiry_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT fk_sales_inquiry_owner FOREIGN KEY(owner_user_id) REFERENCES users(id) ON DELETE SET NULL
+  INDEX idx_sales_inquiry_email(email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS action_usage_events (
@@ -62,9 +59,7 @@ CREATE TABLE IF NOT EXISTS action_usage_events (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   completed_at DATETIME NULL,
   INDEX idx_usage_action_time(action_code,created_at),
-  INDEX idx_usage_user_time(user_id,created_at),
-  CONSTRAINT fk_usage_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_usage_action FOREIGN KEY(action_code) REFERENCES action_catalog(action_code) ON DELETE RESTRICT
+  INDEX idx_usage_user_time(user_id,created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 UPDATE billing_offers SET credit_grant=25, config_json=JSON_SET(COALESCE(config_json,JSON_OBJECT()),'$.displayPriceUsd',0) WHERE offer_code='free';
