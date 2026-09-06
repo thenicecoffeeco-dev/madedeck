@@ -21,10 +21,10 @@ This pass is additive and deliberately avoids the large member UI, mockup assets
 
 ## Cutover gates
 
-1. Apply migration 012 in staging and verify counts/checksums.
-2. Run `node --test tests/access-control.test.js`.
+1. Deploy with `DB_MIGRATION_MODE=check` and verify `/health` readiness without database writes.
+2. Run `npm test` and require a clean result.
 3. Wire one low-risk read endpoint through the new resolver.
 4. Add two-tenant negative tests before any write endpoint cutover.
 5. Convert endpoint groups vertically: Maker → storefront → cart → checkout → order.
 6. Keep the old path behind a rollback flag until each vertical slice passes.
-7. Do not deploy or merge automatically.
+7. Enable `apply` only after a fresh database export; return to `check` after completion.
