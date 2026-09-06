@@ -9,9 +9,11 @@ const {createSwarmPowerRouter,ensureVinnyEntitlement}=require('./swarm-power');
 const {createDialerRouter}=require('./dialer');
 const {createSystemMessagesRouter}=require('./system-messages');
 const {createConnectionBackbone}=require('./connection-backbone');
+const {runConfiguredMigrations}=require('./migration-runner');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.7.1';
+const APP_VERSION='0.7.2';
+let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
 function stripeOrderId(obj){
@@ -207,7 +209,7 @@ function platformEconomics(subtotal){
   const platformFee=Math.max(0,(subtotal*(percent/100))+fixed);
   return {platform_fee:Number(platformFee.toFixed(2)),merchant_payout:Number(Math.max(0,subtotal-platformFee).toFixed(2))};
 }
-app.get('/health',async(req,res)=>{try{await db().query('SELECT 1');res.json({ok:true,mode:'database',database:'connected',version:APP_VERSION,stripe:{payments:!!stripe,webhook:!!process.env.STRIPE_WEBHOOK_SECRET}});}catch(e){res.status(503).json({ok:false,database:'disconnected',error:e.message});}});
+app.get('/health',async(req,res)=>{try{await db().query('SELECT 1');res.json({ok:true,mode:'database',database:'connected',version:APP_VERSION,migrations:{mode:migrationState.mode,ready:migrationState.ready,pending:migrationState.migrations?.filter(x=>x.status==='pending').length||0},stripe:{payments:!!stripe,webhook:!!process.env.STRIPE_WEBHOOK_SECRET}});}catch(e){res.status(503).json({ok:false,database:'disconnected',error:e.message});}});
 async function ensureAccountMembership(user){
   const [existing]=await db().execute(
     `SELECT am.id membership_id,am.account_id,am.store_id,am.profile_key,am.role_key,
@@ -285,6 +287,8 @@ app.patch('/api/platform/modules/:id',requireUser,requirePlatformAdmin,async(req
 app.patch('/api/platform/inquiries/:id',requireUser,requirePlatformAdmin,async(req,res)=>{const status=String(req.body.status||'');if(!['new','contacted','qualified','converted','closed'].includes(status))return res.status(400).json({ok:false,error:'invalid_status'});await db().execute('UPDATE inquiries SET status=? WHERE id=?',[status,req.params.id]);res.json({ok:true});});
 async function boot(){
   await db().query('SELECT 1');
+  migrationState=await runConfiguredMigrations({db:db(),mode:process.env.DB_MIGRATION_MODE||'check'});
+  console.log(`Database migrations mode=${migrationState.mode} ready=${migrationState.ready}`);
   await seedUser(process.env.SEED_ADMIN_EMAIL,process.env.SEED_ADMIN_PASSWORD,'platform_admin');
   await seedUser(process.env.SEED_MERCHANT_EMAIL,process.env.SEED_MERCHANT_PASSWORD,'merchant_admin');
   const swarmOwner=await ensureVinnyEntitlement(db());
