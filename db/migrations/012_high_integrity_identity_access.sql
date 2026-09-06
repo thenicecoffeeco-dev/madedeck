@@ -5,10 +5,8 @@
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS tenant_uuid CHAR(36) NULL AFTER id;
 UPDATE accounts SET tenant_uuid=UUID() WHERE tenant_uuid IS NULL;
 ALTER TABLE accounts MODIFY tenant_uuid CHAR(36) NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS uq_accounts_tenant_uuid ON accounts(tenant_uuid);
 
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS owner_user_id BIGINT UNSIGNED NULL AFTER account_type;
-CREATE INDEX IF NOT EXISTS idx_accounts_owner ON accounts(owner_user_id);
 
 CREATE TABLE IF NOT EXISTS identity_emails (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -96,16 +94,12 @@ ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS last_activity_at DATETIME NUL
 ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS mfa_verified_at DATETIME NULL;
 ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS revoked_reason VARCHAR(255) NULL;
 ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS replaced_by_session_key CHAR(36) NULL;
-CREATE INDEX IF NOT EXISTS idx_auth_session_user_active ON auth_sessions(user_id,revoked_at,expires_at);
-CREATE INDEX IF NOT EXISTS idx_auth_session_account_active ON auth_sessions(account_id,revoked_at,expires_at);
 
 ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS account_id BIGINT UNSIGNED NULL AFTER actor_user_id;
 ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS event_ref CHAR(36) NULL AFTER id;
 ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS actor_session_key CHAR(36) NULL AFTER actor_user_id;
 ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS outcome ENUM('allowed','denied','failed') NOT NULL DEFAULT 'allowed';
 ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS request_id CHAR(36) NULL;
-CREATE INDEX IF NOT EXISTS idx_audit_account_time ON audit_log(account_id,created_at);
-CREATE INDEX IF NOT EXISTS idx_audit_request ON audit_log(request_id);
 
 INSERT INTO roles(role_key,label,scope) VALUES
 ('super','Owner / Superuser','platform'),('operator','Platform Operator','platform'),
