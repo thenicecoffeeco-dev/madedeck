@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS feature_control_overrides (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_feature_control(entity_type,entity_key,scope_type,scope_key),
-  INDEX idx_feature_control_resolution(entity_type,entity_key,scope_type,scope_user_id,enabled)
+  INDEX idx_feature_control_resolution(entity_type,entity_key,scope_type,scope_user_id,enabled),
   CONSTRAINT chk_feature_scope CHECK ((scope_type='platform' AND scope_user_id IS NULL) OR (scope_type='user' AND scope_user_id IS NOT NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS action_price_overrides (
   updated_by_user_id BIGINT UNSIGNED NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_action_price_override(action_code,scope_type,scope_key)
+  UNIQUE KEY uq_action_price_override(action_code,scope_type,scope_key),
   CONSTRAINT chk_price_scope CHECK ((scope_type='platform' AND scope_user_id IS NULL) OR (scope_type='user' AND scope_user_id IS NOT NULL)),
   CONSTRAINT chk_override_base CHECK (override_base_credits IS NULL OR override_base_credits>=0),
   CONSTRAINT chk_override_min CHECK (override_minimum_credits IS NULL OR override_minimum_credits>=0),
