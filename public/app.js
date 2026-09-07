@@ -107,6 +107,22 @@ $$('[data-offertype]').forEach(b=>b.addEventListener('click',()=>{offerType=b.da
 async function loadOffers(){try{const r=await fetch('/api/offers');const j=await r.json();if(!j.ok)return;$('#offerCount').textContent=j.offers.filter(o=>o.status==='live').length;$('#offerList').innerHTML=j.offers.length?j.offers.map(o=>`<div class="offer-row"><span><b>${o.title}</b><br><small>${o.type} · ${o.status}</small></span><span>$${Number(o.retail_price).toFixed(2)}</span></div>`).join(''):'No offers yet.'}catch{}}
 $('#saveOfferBtn')?.addEventListener('click',async()=>{const msg=$('#offerMsg');msg.textContent='Saving…';const body={store_id:1,type:offerType,title:$('#offerTitle').value.trim(),retail_price:Number($('#offerPrice').value),minimum_qty:Number($('#offerQty').value||1),access_mode:$('#offerAccess').value,fulfillment_mode:$('#offerFulfillment').value,closes_at:$('#offerClose').value||null};try{const r=await fetch('/api/offers',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!j.ok)throw new Error(j.error);msg.textContent=`Saved offer #${j.id}`;loadOffers()}catch(err){msg.textContent=`Could not save: ${err.message||'error'}`}});
 
+async function loadSetting(kind){
+  const target=$('#settingsWorkspace');if(!target)return;target.innerHTML='<div class="money-empty">Checking connection…</div>';
+  try{
+    const [healthResponse,cartResponse,contextResponse]=await Promise.all([fetch('/health'),fetch('/api/cart/context'),fetch('/api/v1/account/context',{credentials:'same-origin'})]);
+    const health=await healthResponse.json(),cart=await cartResponse.json(),context=await contextResponse.json();
+    const views={
+      payments:[['Stripe payments',health.stripe?.payments?'Connected':'Not configured'],['Stripe webhook',health.stripe?.webhook?'Connected':'Not configured'],['Checkout providers',Object.entries(cart.providers||{}).filter(([,on])=>on).map(([name])=>name).join(', ')||'None']],
+      team:[['Account',context.account?.key||'Unavailable'],['Role',context.actor?.role||'Unavailable'],['User ID',context.actor?.user_id||'Unavailable']],
+      fulfillment:[['Direct shipping','Available'],['Office delivery','Available'],['Production handoff','Manifest + adapter ready']],
+      growth:[['Public domain',location.hostname],['Storefront','Connected'],['Tracking','Per-tenant configuration ready']]
+    };
+    target.innerHTML=(views[kind]||[]).map(([label,value])=>`<div class="money-row"><div class="money-row-main"><b>${escapeHtml(label)}</b></div><span>${escapeHtml(value)}</span></div>`).join('');
+  }catch(error){target.innerHTML='<div class="money-empty">Unable to inspect this setting: '+escapeHtml(error.message)+'</div>'}
+}
+$('[data-setting]').forEach(button=>button.addEventListener('click',()=>loadSetting(button.dataset.setting)));
+
 const money=v=>`$${Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 function configureDashboard(user){const admin=user?.role==='platform_admin';$('#adminMonetization').dataset.authorized=admin?'true':'false';$('#adminMonetization').hidden=!admin;if(admin){$('#dashboardEyebrow').textContent='MADEDECK ADMIN';$('#dashboardTitle').textContent='The business, clearly.';$('#dashboardSub').textContent='Pricing, modules, subscribers, inquiries and credits without hunting through five systems.';loadMonetization()}}
 async function moneyRequest(url,options){const r=await fetch(url,options);const j=await r.json();if(!j.ok)throw new Error(j.error||'Request failed');return j}
