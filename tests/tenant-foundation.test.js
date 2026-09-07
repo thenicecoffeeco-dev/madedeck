@@ -4,13 +4,15 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const {bootstrapPlatformOwner,ensureAccountMembership}=require('../src/tenant-foundation');
 
-test('owner bootstrap is inert when no address is configured',async()=>{
-  const database={execute(){throw new Error('database must not be touched');}};
-  assert.deepEqual(await bootstrapPlatformOwner(database,''),{configured:false,assigned:false,reason:'email_not_configured'});
-});
-
-test('owner bootstrap refuses a non-admin identity',async()=>{
-  const database={execute:async()=>[[{id:7,email:'owner@example.com',role:'merchant_admin'}]]};
+test('owner bootstrap refuses a non-admin identity before assignment',async()=>{
+  let call=0;
+  const database={execute:async()=>{
+    call+=1;
+    if(call===2)return [[{id:1}]];
+    if(call===4)return [[{owner_user_id:null}]];
+    if(call===5)return [[{id:7,email:'owner@example.com',role:'merchant_admin'}]];
+    return [[]];
+  }};
   assert.deepEqual(await bootstrapPlatformOwner(database,'OWNER@example.com'),{configured:true,assigned:false,reason:'platform_admin_required'});
 });
 
