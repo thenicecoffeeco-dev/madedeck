@@ -17,7 +17,7 @@ const {createWorkspaceRouter}=require('./workspace-routes');
 const {createOperationsRouter}=require('./operations-routes');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.9.2';
+const APP_VERSION='0.10.0';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -230,6 +230,38 @@ app.get('/api/v1/account/context',tenantAccess.resolve,tenantAccess.authenticate
     const c=req.authContext;
     res.json({ok:true,request_id:req.requestId,account:{id:c.accountId,key:c.accountKey,store_id:c.storeId,profile_key:c.profileKey},actor:{user_id:c.userId,role:c.role}});
   });
+const checkoutCatalog=Object.freeze({
+  tee:{name:'Essential Tee',base:1800},hoodie:{name:'Heavy Hoodie',base:2600},
+  polo:{name:'Studio Polo',base:2900},sticker:{name:'Custom Sticker',base:600},
+  koozie:{name:'Cold Keeper',base:1200}
+});
+function checkoutUnitAmount(item){
+  const product=checkoutCatalog[String(item.productId||'')];if(!product)return null;
+  const size={S:0,M:0,L:0,XL:0,'2X':200,'3X':400,'4X':600,'5X':800}[String(item.variant||'')]||0;
+  const decorated=Object.values(item.surfaces||{}).filter(layers=>Array.isArray(layers)&&layers.length).length;
+  const surfaces=Math.max(0,decorated-1)*600,method=/embroidery/i.test(String(item.method||''))?800:0;
+  return {name:product.name,amount:product.base+size+surfaces+method};
+}
+app.post('/api/checkout/session',tenantAccess.resolve,tenantAccess.authenticated,tenantAccess.tenant,
+  tenantAccess.authorize('maker.use'),async(req,res,next)=>{
+    try{
+      if(!stripe)return res.status(503).json({ok:false,error:'stripe_not_configured',request_id:req.requestId});
+      const input=Array.isArray(req.body?.items)?req.body.items.slice(0,25):[];
+      const priced=input.map(item=>({item,price:checkoutUnitAmount(item)}));
+      if(!priced.length||priced.some(x=>!x.price))return res.status(400).json({ok:false,error:'invalid_checkout_items',request_id:req.requestId});
+      const origin=`${req.protocol}://${req.get('host')}`;
+      const checkout=await stripe.checkout.sessions.create({
+        mode:'payment',
+        customer_email:req.body?.customer?.email||req.authContext.email||undefined,
+        line_items:priced.map(({item,price})=>({quantity:Math.max(1,Math.min(500,Number(item.quantity)||1)),price_data:{currency:'usd',unit_amount:price.amount,product_data:{name:price.name,metadata:{product_key:String(item.productId),variant:String(item.variant||''),method:String(item.method||'')}}}})),
+        metadata:{madedeck_account_id:String(req.authContext.accountId),madedeck_user_id:String(req.authContext.userId),madedeck_session_key:String(req.authContext.sessionKey||'')},
+        success_url:origin+'/member-account.html?module=member-receipts&checkout=success',
+        cancel_url:origin+'/member-account.html?module=private-product-studio&checkout=cancelled'
+      });
+      res.json({ok:true,url:checkout.url,id:checkout.id});
+    }catch(error){next(error)}
+  });
+
 app.post('/api/inquiries',async(req,res)=>{const b=req.body||{};const email=String(b.email||'').trim().toLowerCase();if(!email||!email.includes('@'))return res.status(400).json({ok:false,error:'valid_email_required'});const [r]=await db().execute('INSERT INTO inquiries(name,email,company,source,message) VALUES(?,?,?,?,?)',[String(b.name||'').trim(),email,String(b.company||'').trim()||null,String(b.source||'website').slice(0,100),String(b.message||'').trim()||null]);res.status(201).json({ok:true,id:r.insertId});});
 app.get('/api/cart/context',(req,res)=>res.json({ok:true,role:cartRole(req),providers:paymentProviders(),version:APP_VERSION}));
 app.post('/api/checkout/preview',(req,res)=>{
