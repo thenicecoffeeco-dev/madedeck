@@ -163,6 +163,8 @@ app.get('/',(req,res)=>{
     res.type('html').send(html);
   }catch(e){res.status(500).send('MadeDeck frontend unavailable');}
 });
+app.get('/member',(req,res)=>res.redirect(302,'/member-account.html?module=member-workspace'));
+app.get('/studio',(req,res)=>res.redirect(302,'/member-account.html?module=private-product-studio'));
 app.use(express.static(publicDir,{setHeaders:(res,filePath)=>{
   if(filePath.endsWith('.css')||filePath.endsWith('.js')||filePath.endsWith('.html')||filePath.endsWith('.json')){
     res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
