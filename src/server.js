@@ -14,6 +14,7 @@ const {createAccessControl}=require('./access-control');
 const {bootstrapPlatformOwner,transferPlatformOwner,ensureAccountMembership,createSecurityAudit}=require('./tenant-foundation');
 const {validStoreId,canAccessStore,listOffers}=require('./store-access');
 const {createWorkspaceRouter}=require('./workspace-routes');
+const {createOperationsRouter}=require('./operations-routes');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
 const APP_VERSION='0.9.0';
@@ -221,6 +222,7 @@ app.get('/api/me',requireUser,(req,res)=>res.json({ok:true,user:req.user}));
 const securityAudit=createSecurityAudit(db());
 const tenantAccess=createAccessControl({session:durableSession,audit:securityAudit});
 app.use('/api/workspace',createWorkspaceRouter({db,access:tenantAccess}));
+app.use('/api/operations',createOperationsRouter({db,access:tenantAccess}));
 app.get('/api/v1/account/context',tenantAccess.resolve,tenantAccess.authenticated,tenantAccess.tenant,
   tenantAccess.authorize('tenant.settings.manage'),(req,res)=>{
     const c=req.authContext;
