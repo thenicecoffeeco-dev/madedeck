@@ -2,7 +2,7 @@
 
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {bootstrapPlatformOwner,ensureAccountMembership}=require('../src/tenant-foundation');
+const {bootstrapPlatformOwner,transferPlatformOwner,ensureAccountMembership}=require('../src/tenant-foundation');
 
 test('owner bootstrap refuses a non-admin identity before assignment',async()=>{
   let call=0;
@@ -42,4 +42,22 @@ test('existing non-owner membership remains stable without email inference',asyn
   const database={execute:async()=>{call+=1;return call===1?[[]]:[[membership]];}};
   assert.equal(await ensureAccountMembership(database,{id:11,email:'owner@example.com'}),membership);
   assert.equal(call,2);
+});
+
+test('owner transfer requires an exact deployment confirmation',async()=>{
+  await assert.rejects(
+    transferPlatformOwner({},{fromUserId:1,toUserId:20,toEmail:'madedeck@proton.me',confirmation:'yes'}),
+    /owner_transfer_confirmation_mismatch/
+  );
+});
+
+test('owner transfer is idempotent after target owns the tenant',async()=>{
+  let committed=false;
+  const connection={
+    beginTransaction:async()=>{},commit:async()=>{committed=true;},rollback:async()=>{},
+    execute:async()=>[[{account_id:1,owner_user_id:20}]]
+  };
+  const result=await transferPlatformOwner(connection,{fromUserId:1,toUserId:20,toEmail:'madedeck@proton.me',confirmation:'madedeck:1:20'});
+  assert.equal(result.alreadyCompleted,true);
+  assert.equal(committed,true);
 });
