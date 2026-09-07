@@ -266,14 +266,14 @@ async function boot(){
   await seedUser(process.env.SEED_ADMIN_EMAIL,process.env.SEED_ADMIN_PASSWORD,'platform_admin');
   await seedUser(process.env.SEED_MERCHANT_EMAIL,process.env.SEED_MERCHANT_PASSWORD,'merchant_admin');
   try{
-    const owner=await bootstrapPlatformOwner(db(),process.env.MADEDECK_BOOTSTRAP_OWNER_EMAIL||process.env.VINNY_OWNER_EMAIL);
+    const owner=await bootstrapPlatformOwner(db(),process.env.MADEDECK_BOOTSTRAP_OWNER_EMAIL||process.env.VINNY_OWNER_EMAIL||process.env.SEED_ADMIN_EMAIL);
     console.log(`MadeDeck owner configured=${owner.configured} assigned=${owner.assigned}${owner.reason?` reason=${owner.reason}`:''}`);
   }catch(error){
     migrationState={...migrationState,ready:false,blocking_error:'owner_bootstrap_conflict'};
     console.error('MadeDeck owner bootstrap blocked:',error.message);
   }
   try{
-    const swarmOwner=await ensureVinnyEntitlement(db());
+    const swarmOwner=await ensureVinnyEntitlement(db);
     console.log(`Swarm Power owner configured=${swarmOwner.configured} granted=${swarmOwner.granted}`);
   }catch(error){
     migrationState={...migrationState,ready:false,blocking_error:'optional_schema_incomplete'};
