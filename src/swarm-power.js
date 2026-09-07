@@ -290,11 +290,14 @@ function createSwarmPowerRouter({ db, session }) {
 }
 
 async function ensureVinnyEntitlement(db) {
-  const ownerEmail = cleanEmail(process.env.VINNY_OWNER_EMAIL);
-  if (!ownerEmail) return { configured: false, granted: false };
-  const [users] = await db().execute("SELECT id,role FROM users WHERE email=? AND status='active' LIMIT 1", [ownerEmail]);
-  const owner = users[0];
-  if (!owner || owner.role !== 'platform_admin') return { configured: true, granted: false };
+  const [owners] = await db().execute(
+    `SELECT ti.owner_user_id id,u.role
+     FROM tenant_identities ti JOIN accounts a ON a.id=ti.account_id
+     JOIN users u ON u.id=ti.owner_user_id AND u.status='active'
+     WHERE a.account_key='madedeck' AND a.status='active' LIMIT 1`
+  );
+  const owner = owners[0];
+  if (!owner || owner.role !== 'platform_admin') return { configured: false, granted: false };
   await db().execute(
     `INSERT INTO user_entitlements(user_id,entitlement_key,enabled,granted_by_user_id)
      VALUES(?,?,1,?) ON DUPLICATE KEY UPDATE enabled=1,expires_at=NULL,granted_by_user_id=VALUES(granted_by_user_id)`,
