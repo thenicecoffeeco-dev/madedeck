@@ -12,9 +12,10 @@ const {createConnectionBackbone}=require('./connection-backbone');
 const {runConfiguredMigrations}=require('./migration-runner');
 const {createAccessControl}=require('./access-control');
 const {bootstrapPlatformOwner,transferPlatformOwner,ensureAccountMembership,createSecurityAudit}=require('./tenant-foundation');
+const {validStoreId,canAccessStore,listOffers}=require('./store-access');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.8.2';
+const APP_VERSION='0.8.3';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -216,7 +217,8 @@ app.get('/health',async(req,res)=>{try{await db().query('SELECT 1');res.json({ok
 app.post('/api/auth/login',async(req,res)=>{try{const email=String(req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const [rows]=await db().execute('SELECT id,email,password_salt,password_hash,role,status FROM users WHERE email=? LIMIT 1',[email]);const u=rows[0];if(!u||u.status!=='active'||!verifyPassword(password,u.password_salt,u.password_hash))return res.status(401).json({ok:false,error:'invalid_credentials'});const membership=await ensureAccountMembership(db(),u);const token=crypto.randomBytes(32).toString('hex'),sessionKey=crypto.randomUUID();const scoped={id:u.id,email:u.email,role:u.role,session_key:sessionKey,account_id:membership.account_id,account_key:membership.account_key,account_type:membership.account_type,store_id:membership.store_id,profile_key:membership.profile_key,acting_role:membership.role_key,permissions_json:membership.permissions_json,subscription_json:membership.subscription_json};sessions.set(token,scoped);try{await db().execute(`INSERT INTO auth_sessions(session_key,user_id,token_hash,account_id,membership_id,store_id,profile_key,acting_role,permissions_json,subscription_json,user_agent,ip_hash,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,DATE_ADD(NOW(),INTERVAL 12 HOUR))`,[sessionKey,u.id,sessionHash(token),membership.account_id,membership.membership_id,membership.store_id,membership.profile_key,membership.role_key,membership.permissions_json,membership.subscription_json,String(req.headers['user-agent']||'').slice(0,500),sessionHash(req.ip||'')]);}catch(sessionError){console.error('durable session unavailable; using runtime session',sessionError.message);}res.cookie('md_session',token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',maxAge:1000*60*60*12});res.json({ok:true,user:{email:u.email,role:u.role,account_key:membership.account_key,profile_key:membership.profile_key,acting_role:membership.role_key}});}catch(error){console.error('login failed',error);res.status(500).json({ok:false,error:'login_service_error',detail:process.env.NODE_ENV==='production'?undefined:error.message});}});
 app.post('/api/auth/logout',async(req,res)=>{const token=req.cookies.md_session;if(token){sessions.delete(token);await db().execute('UPDATE auth_sessions SET revoked_at=NOW() WHERE token_hash=?',[sessionHash(token)]);}res.clearCookie('md_session');res.json({ok:true});});
 app.get('/api/me',requireUser,(req,res)=>res.json({ok:true,user:req.user}));
-const tenantAccess=createAccessControl({session:durableSession,audit:createSecurityAudit(db())});
+const securityAudit=createSecurityAudit(db());
+const tenantAccess=createAccessControl({session:durableSession,audit:securityAudit});
 app.get('/api/v1/account/context',tenantAccess.resolve,tenantAccess.authenticated,tenantAccess.tenant,
   tenantAccess.authorize('tenant.settings.manage'),(req,res)=>{
     const c=req.authContext;
@@ -235,8 +237,26 @@ app.post('/api/checkout/preview',(req,res)=>{
   if(role!=='customer')response.economics={...economics,order_owner:role==='owner'?'MadeDeck platform':'Merchant store'};
   res.json(response);
 });
-app.get('/api/offers',requireUser,async(req,res)=>{const [rows]=await db().query('SELECT * FROM offers ORDER BY created_at DESC LIMIT 100');res.json({ok:true,offers:rows});});
-app.post('/api/offers',requireUser,async(req,res)=>{const b=req.body;const type=['store','preorder','bulk'].includes(b.type)?b.type:'store';const access=['public','paid_customer','private_link'].includes(b.access_mode)?b.access_mode:'public';const fulfillment=['direct','office','both'].includes(b.fulfillment_mode)?b.fulfillment_mode:'both';const price=Number(b.retail_price),min=Number(b.minimum_qty||1);if(!b.store_id||!b.title||!Number.isFinite(price)||price<0)return res.status(400).json({ok:false,error:'invalid_offer'});const [r]=await db().execute('INSERT INTO offers(store_id,product_id,type,title,status,access_mode,fulfillment_mode,retail_price,minimum_qty,closes_at) VALUES(?,?,?,?,?,?,?,?,?,?)',[b.store_id,b.product_id||null,type,b.title,'draft',access,fulfillment,price,Math.max(1,min),b.closes_at||null]);res.status(201).json({ok:true,id:r.insertId});});
+app.get('/api/offers',tenantAccess.resolve,tenantAccess.authenticated,tenantAccess.tenant,
+  tenantAccess.authorize('products.create'),async(req,res)=>{
+    const rows=await listOffers(db(),req.authContext,req.query.limit);
+    res.json({ok:true,offers:rows});
+  });
+app.post('/api/offers',tenantAccess.resolve,tenantAccess.authenticated,tenantAccess.tenant,
+  tenantAccess.authorize('products.create'),async(req,res)=>{
+    const b=req.body||{},storeId=validStoreId(b.store_id);
+    const type=['store','preorder','bulk'].includes(b.type)?b.type:'store';
+    const access=['public','paid_customer','private_link'].includes(b.access_mode)?b.access_mode:'public';
+    const fulfillment=['direct','office','both'].includes(b.fulfillment_mode)?b.fulfillment_mode:'both';
+    const price=Number(b.retail_price),min=Number(b.minimum_qty||1);
+    if(!storeId||!b.title||!Number.isFinite(price)||price<0)return res.status(400).json({ok:false,error:'invalid_offer',request_id:req.requestId});
+    if(!await canAccessStore(db(),req.authContext,storeId)){
+      await securityAudit({req,context:req.authContext,permission:'products.create',outcome:'denied',reason:'store_scope_denied',targetAccountId:req.authContext.accountId});
+      return res.status(403).json({ok:false,error:'store_scope_denied',request_id:req.requestId});
+    }
+    const [r]=await db().execute('INSERT INTO offers(store_id,product_id,type,title,status,access_mode,fulfillment_mode,retail_price,minimum_qty,closes_at) VALUES(?,?,?,?,?,?,?,?,?,?)',[storeId,b.product_id||null,type,b.title,'draft',access,fulfillment,price,Math.max(1,min),b.closes_at||null]);
+    res.status(201).json({ok:true,id:r.insertId});
+  });
 app.get('/api/platform/features',requireUser,requirePlatformAdmin,async(req,res)=>{const [rows]=await db().query('SELECT * FROM feature_flags ORDER BY feature_key');res.json({ok:true,features:rows});});
 app.get('/api/platform/monetization',requireUser,requirePlatformAdmin,async(req,res)=>{
   const [[plans],[modules],[subscriptions],[inquiries],[wallets],[orders]]=await Promise.all([
