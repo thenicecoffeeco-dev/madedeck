@@ -15,7 +15,7 @@ const {bootstrapPlatformOwner,transferPlatformOwner,ensureAccountMembership,crea
 const {validStoreId,canAccessStore,listOffers}=require('./store-access');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.8.3';
+const APP_VERSION='0.8.4';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 

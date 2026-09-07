@@ -107,8 +107,62 @@ async function loadOffers(){try{const r=await fetch('/api/offers');const j=await
 $('#saveOfferBtn')?.addEventListener('click',async()=>{const msg=$('#offerMsg');msg.textContent='Saving…';const body={store_id:1,type:offerType,title:$('#offerTitle').value.trim(),retail_price:Number($('#offerPrice').value),minimum_qty:Number($('#offerQty').value||1),access_mode:$('#offerAccess').value,fulfillment_mode:$('#offerFulfillment').value,closes_at:$('#offerClose').value||null};try{const r=await fetch('/api/offers',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!j.ok)throw new Error(j.error);msg.textContent=`Saved offer #${j.id}`;loadOffers()}catch(err){msg.textContent=`Could not save: ${err.message||'error'}`}});
 
 const money=v=>`$${Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-function configureDashboard(user){const admin=user?.role==='platform_admin';$('#adminMonetization').hidden=!admin;if(admin){$('#dashboardEyebrow').textContent='MADEDECK ADMIN';$('#dashboardTitle').textContent='The business, clearly.';$('#dashboardSub').textContent='Pricing, modules, subscribers, inquiries and credits without hunting through five systems.';loadMonetization()}}
+function configureDashboard(user){const admin=user?.role==='platform_admin';$('#adminMonetization').dataset.authorized=admin?'true':'false';$('#adminMonetization').hidden=!admin;if(admin){$('#dashboardEyebrow').textContent='MADEDECK ADMIN';$('#dashboardTitle').textContent='The business, clearly.';$('#dashboardSub').textContent='Pricing, modules, subscribers, inquiries and credits without hunting through five systems.';loadMonetization()}}
 async function moneyRequest(url,options){const r=await fetch(url,options);const j=await r.json();if(!j.ok)throw new Error(j.error||'Request failed');return j}
+function initDashboardNavigation(){
+  const nav=$('.dash-nav'),content=$('.dash-content');
+  if(!nav||!content)return;
+  const children=Array.from(content.children);
+  const product=children[0],createOffer=children[1],savedOffers=children[2],pricing=children[3],monetization=$('#adminMonetization'),settings=children[5];
+  product.dataset.dashboardPanel='products';
+  createOffer.dataset.dashboardPanel='offers';
+  savedOffers.dataset.dashboardPanel='offers';
+  pricing.dataset.dashboardPanel='overview';
+  monetization.dataset.dashboardPanel='monetization';
+  settings.dataset.dashboardPanel='settings';
+  const placeholders={};
+  const placeholder=(key,title,body,action='')=>{
+    const panel=document.createElement('section');
+    panel.className='dashboard-empty';
+    panel.dataset.dashboardPanel=key;
+    panel.hidden=true;
+    panel.innerHTML=`<span class="eyebrow">MADEDECK · ${title.toUpperCase()}</span><h2>${title}</h2><p>${body}</p>${action}`;
+    content.appendChild(panel);panel.querySelector('[data-page]')?.addEventListener('click',()=>showPage('products'));placeholders[key]=panel;
+  };
+  placeholder('orders','Orders','Existing order data is preserved. The tenant-secured order workspace is the next backend connection in this rebuild.');
+  placeholder('designs','Designs','Your customizer and saved-design work remain intact. Open the product studio to continue designing.','<button class="btn btn-dark" type="button" data-page="products">Open product studio</button>');
+  placeholder('customers','Customers','Existing customer and subscriber records are preserved. Their tenant-scoped workspace is being reconnected.');
+  placeholder('modules','Modules','Module controls are available to the MadeDeck platform owner through the monetization console.');
+  const map={
+    overview:[product,createOffer,savedOffers,pricing,monetization,settings],
+    products:[product],orders:[placeholders.orders],offers:[createOffer,savedOffers],
+    designs:[placeholders.designs],customers:[placeholders.customers],
+    modules:[monetization],monetization:[monetization],settings:[settings]
+  };
+  function activate(target){
+    const requested=map[target]?target:'overview';
+    Array.from(content.children).forEach(panel=>panel.hidden=true);
+    const panels=map[requested];
+    let shown=0;
+    panels.forEach(panel=>{
+      if(panel===monetization&&panel.dataset.authorized!=='true')return;
+      panel.hidden=false;shown++;
+      if(panel.tagName==='DETAILS'&&requested!=='overview')panel.open=true;
+    });
+    if(!shown&&['modules','monetization'].includes(requested))placeholders.modules.hidden=false;
+    $('.dash-nav button').forEach(button=>button.classList.toggle('active',button.dataset.dashboardTarget===requested));
+    content.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  $('.dash-nav button').forEach(button=>{
+    button.type='button';
+    button.dataset.dashboardTarget=button.textContent.trim().toLowerCase();
+    button.addEventListener('click',()=>activate(button.dataset.dashboardTarget));
+  });
+  nav.setAttribute('aria-label','Dashboard sections');
+  activate('overview');
+}
+initDashboardNavigation();
+
 function renderMoneyStats(s){$('#moneyStats').innerHTML=[['Monthly recurring',money(s.monthly_recurring_revenue)],['Active subscribers',s.active_subscriptions||0],['New inquiries',s.new_inquiries||0],['Credits outstanding',Number(s.outstanding_credits||0).toLocaleString()]].map(([label,value])=>`<div class="money-stat"><span>${label}</span><b>${value}</b></div>`).join('')}
 function renderPlanRows(plans){$('#planRows').innerHTML=plans.length?plans.map(p=>`<div class="money-row" data-plan="${p.id}"><div class="money-row-main"><b>${p.name}</b><small>${p.code}</small></div><input type="number" min="0" step=".01" value="${Number(p.monthly_price)}" aria-label="Monthly price"><input type="number" min="0" step="1" value="${Number(p.included_credits)}" aria-label="Included credits"><button class="mini-btn" data-save-plan="${p.id}">Save</button></div>`).join(''):'<div class="money-empty">No plans configured.</div>'}
 function renderModuleRows(modules){$('#moduleRows').innerHTML=modules.length?modules.map(m=>`<div class="money-row" data-module="${m.id}"><div class="money-row-main"><b>${m.name}</b><small>${m.billing_type} · ${m.description||''}</small></div><input type="number" min="0" step=".01" value="${Number(m.price)}" aria-label="Price"><input type="number" min="0" step="1" value="${Number(m.credit_cost)}" aria-label="Credit cost"><button class="mini-btn" data-save-module="${m.id}">Save</button></div>`).join(''):'<div class="money-empty">No modules configured.</div>'}
