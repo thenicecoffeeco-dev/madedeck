@@ -61,3 +61,13 @@ test('owner transfer is idempotent after target owns the tenant',async()=>{
   assert.equal(result.alreadyCompleted,true);
   assert.equal(committed,true);
 });
+
+test('owner transfer derives ids from exact confirmation when host omits redundant fields',async()=>{
+  const connection={
+    beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},
+    execute:async()=>[[{account_id:1,owner_user_id:20}]]
+  };
+  const result=await transferPlatformOwner(connection,{toEmail:'madedeck@proton.me',confirmation:'madedeck:1:20'});
+  assert.equal(result.alreadyCompleted,true);
+  assert.equal(result.userId,20);
+});
