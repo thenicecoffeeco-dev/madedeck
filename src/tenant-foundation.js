@@ -118,6 +118,61 @@ async function ensureAccountMembership(database,user){
   return created;
 }
 
+async function transferPlatformOwner(database,{fromUserId,toUserId,toEmail,confirmation}={}){
+  const fromId=Number(fromUserId),toId=Number(toUserId),email=cleanEmail(toEmail);
+  if(!fromUserId&&!toUserId&&!toEmail&&!confirmation)return {configured:false,transferred:false};
+  if(!Number.isSafeInteger(fromId)||fromId<1||!Number.isSafeInteger(toId)||toId<1||!email){
+    throw new Error('invalid_owner_transfer_configuration');
+  }
+  if(String(confirmation)!==`madedeck:${fromId}:${toId}`)throw new Error('owner_transfer_confirmation_mismatch');
+  const connection=typeof database.getConnection==='function'?await database.getConnection():database;
+  try{
+    if(connection.beginTransaction)await connection.beginTransaction();
+    const [[tenant]]=await connection.execute(
+      `SELECT ti.account_id,ti.owner_user_id FROM tenant_identities ti
+       JOIN accounts a ON a.id=ti.account_id
+       WHERE a.account_key='madedeck' LIMIT 1 FOR UPDATE`);
+    if(!tenant)throw new Error('madedeck_tenant_not_found');
+    if(Number(tenant.owner_user_id)===toId){
+      if(connection.commit)await connection.commit();
+      return {configured:true,transferred:true,alreadyCompleted:true,accountId:Number(tenant.account_id),userId:toId};
+    }
+    if(Number(tenant.owner_user_id)!==fromId)throw new Error('owner_transfer_source_mismatch');
+    const [users]=await connection.execute(
+      "SELECT id,email,role FROM users WHERE id=? AND email=? AND status='active' LIMIT 1",[toId,email]);
+    const target=users[0];
+    if(!target||target.role!=='platform_admin')throw new Error('owner_transfer_target_invalid');
+    const transferRef=crypto.randomUUID();
+    await connection.execute(
+      `INSERT INTO ownership_transfers
+       (transfer_ref,account_id,from_user_id,to_user_id,requested_by_user_id,transfer_status,reason,old_owner_ack_at,new_owner_ack_at,completed_at,expires_at)
+       VALUES(?,?,?,?,?,'completed','Explicit deployment-owner recovery',NOW(),NOW(),NOW(),DATE_ADD(NOW(),INTERVAL 1 DAY))`,
+      [transferRef,tenant.account_id,fromId,toId,toId]);
+    const [updated]=await connection.execute(
+      'UPDATE tenant_identities SET owner_user_id=? WHERE account_id=? AND owner_user_id=?',[toId,tenant.account_id,fromId]);
+    if(Number(updated.affectedRows)!==1)throw new Error('owner_transfer_write_conflict');
+    await connection.execute(
+      "UPDATE account_memberships SET status='disabled' WHERE account_id=? AND user_id=? AND role_key='super'",
+      [tenant.account_id,fromId]);
+    await connection.execute(
+      `INSERT INTO account_memberships(account_id,user_id,store_id,profile_key,role_key,status)
+       VALUES(?,?,NULL,NULL,'super','active') ON DUPLICATE KEY UPDATE status='active'`,
+      [tenant.account_id,toId]);
+    await connection.execute(
+      `INSERT INTO security_audit_events
+       (event_ref,account_id,actor_user_id,action,outcome,resource_type,resource_id,detail_json)
+       VALUES(?,?,?,'ownership.transfer','allowed','tenant',?,?)`,
+      [crypto.randomUUID(),tenant.account_id,toId,String(tenant.account_id),JSON.stringify({transfer_ref:transferRef,from_user_id:fromId,to_user_id:toId})]);
+    if(connection.commit)await connection.commit();
+    return {configured:true,transferred:true,accountId:Number(tenant.account_id),userId:toId,transferRef};
+  }catch(error){
+    if(connection.rollback)await connection.rollback();
+    throw error;
+  }finally{
+    if(connection!==database&&connection.release)connection.release();
+  }
+}
+
 function createSecurityAudit(database){
   return async({req,context,permission,outcome,reason,targetAccountId})=>{
     try{
@@ -134,4 +189,4 @@ function createSecurityAudit(database){
   };
 }
 
-module.exports={bootstrapPlatformOwner,ensureAccountMembership,createSecurityAudit,cleanEmail};
+module.exports={bootstrapPlatformOwner,transferPlatformOwner,ensureAccountMembership,createSecurityAudit,cleanEmail};
