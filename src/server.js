@@ -17,7 +17,7 @@ const {createWorkspaceRouter}=require('./workspace-routes');
 const {createOperationsRouter}=require('./operations-routes');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.9.0';
+const APP_VERSION='0.9.1';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -163,6 +163,8 @@ app.get('/',(req,res)=>{
     res.type('html').send(html);
   }catch(e){res.status(500).send('MadeDeck frontend unavailable');}
 });
+app.get('/member',(req,res)=>res.redirect(302,'/member-account.html?module=member-workspace'));
+app.get('/studio',(req,res)=>res.redirect(302,'/member-account.html?module=private-product-studio'));
 app.use(express.static(publicDir,{setHeaders:(res,filePath)=>{
   if(filePath.endsWith('.css')||filePath.endsWith('.js')||filePath.endsWith('.html')||filePath.endsWith('.json')){
     res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -278,6 +280,13 @@ app.get('/api/platform/monetization',requireUser,requirePlatformAdmin,async(req,
 app.patch('/api/platform/plans/:id',requireUser,requirePlatformAdmin,async(req,res)=>{const b=req.body||{};const price=Number(b.monthly_price),credits=Number(b.included_credits);if(!Number.isFinite(price)||price<0||!Number.isInteger(credits)||credits<0)return res.status(400).json({ok:false,error:'invalid_plan_values'});await db().execute('UPDATE platform_plans SET monthly_price=?,included_credits=?,active=? WHERE id=?',[price,credits,b.active?1:0,req.params.id]);res.json({ok:true});});
 app.patch('/api/platform/modules/:id',requireUser,requirePlatformAdmin,async(req,res)=>{const b=req.body||{};const price=Number(b.price),credits=Number(b.credit_cost);if(!Number.isFinite(price)||price<0||!Number.isInteger(credits)||credits<0)return res.status(400).json({ok:false,error:'invalid_module_values'});await db().execute('UPDATE platform_modules SET price=?,credit_cost=?,active=? WHERE id=?',[price,credits,b.active?1:0,req.params.id]);res.json({ok:true});});
 app.patch('/api/platform/inquiries/:id',requireUser,requirePlatformAdmin,async(req,res)=>{const status=String(req.body.status||'');if(!['new','contacted','qualified','converted','closed'].includes(status))return res.status(400).json({ok:false,error:'invalid_status'});await db().execute('UPDATE inquiries SET status=? WHERE id=?',[status,req.params.id]);res.json({ok:true});});
+app.use((error,req,res,next)=>{
+  console.error('MadeDeck request failed',req.method,req.originalUrl,error.message);
+  if(res.headersSent)return next(error);
+  const code=/tenant_designs|tenant_saved_products|doesn't exist|does not exist/i.test(String(error.message||''))?503:500;
+  res.status(code).json({ok:false,error:code===503?'workspace_schema_not_applied':'internal_error',request_id:req.requestId||null});
+});
+
 async function boot(){
   await db().query('SELECT 1');
   try{

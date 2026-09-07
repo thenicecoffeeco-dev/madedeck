@@ -153,7 +153,7 @@ async function runConfiguredMigrations({db,mode='check',migrationsDir=path.join(
     const before=await status(connection,migrationsDir);
     const unsafe=before.filter(item=>item.status==='completed'&&!item.checksum_match);
     if(unsafe.length)throw new Error(`migration_checksum_mismatch:${unsafe.map(x=>x.key).join(',')}`);
-    if(normalized==='check')return {mode:'check',ready:!before.some(x=>x.status==='failed'),migrations:before};
+    if(normalized==='check')return {mode:'check',ready:!before.some(x=>x.status==='failed'||x.status==='pending'||x.status==='running'),migrations:before};
     const results=[];
     for(const key of MIGRATIONS)results.push(await applyOne(connection,migrationsDir,key));
     return {mode:'apply',ready:true,results,migrations:await status(connection,migrationsDir)};
