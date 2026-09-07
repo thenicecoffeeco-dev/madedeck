@@ -129,9 +129,9 @@ function initDashboardNavigation(){
     panel.innerHTML=`<span class="eyebrow">MADEDECK · ${title.toUpperCase()}</span><h2>${title}</h2><p>${body}</p>${action}`;
     content.appendChild(panel);panel.querySelector('[data-page]')?.addEventListener('click',()=>showPage('products'));placeholders[key]=panel;
   };
-  placeholder('orders','Orders','Existing order data is preserved. The tenant-secured order workspace is the next backend connection in this rebuild.');
-  placeholder('designs','Designs','Your customizer and saved-design work remain intact. Open the product studio to continue designing.','<button class="btn btn-dark" type="button" data-page="products">Open product studio</button>');
-  placeholder('customers','Customers','Existing customer and subscriber records are preserved. Their tenant-scoped workspace is being reconnected.');
+  placeholder('orders','Orders','Live tenant-scoped order records load here.','<div id="ordersWorkspace" class="money-list"><div class="money-empty">Loading orders…</div></div>');
+  placeholder('designs','Designs','Open the restored MadeDeck Product Studio to create and manage tenant-owned designs.','<a class="btn btn-dark" href="/text.html">Open product studio</a>');
+  placeholder('customers','Customers','Customers are derived from the orders this account may access.','<div id="customersWorkspace" class="money-list"><div class="money-empty">Loading customers…</div></div>');
   placeholder('modules','Modules','Module controls are available to the MadeDeck platform owner through the monetization console.');
   const map={
     overview:[product,createOffer,savedOffers,pricing,monetization,settings],
@@ -152,11 +152,24 @@ function initDashboardNavigation(){
     if(!shown&&['modules','monetization'].includes(requested))placeholders.modules.hidden=false;
     $$('.dash-nav button').forEach(button=>button.classList.toggle('active',button.dataset.dashboardTarget===requested));
     content.scrollIntoView({behavior:'smooth',block:'start'});
+    if(requested==='orders')loadOperations('orders');
+    if(requested==='customers')loadOperations('customers');
+  }
+  async function loadOperations(kind){
+    const target=$('#'+kind+'Workspace');if(!target||target.dataset.loaded==='true')return;
+    target.innerHTML='<div class="money-empty">Loading '+kind+'…</div>';
+    try{
+      const response=await fetch('/api/operations/'+kind,{credentials:'same-origin'}),payload=await response.json();
+      if(!response.ok)throw Error(payload.error||'Request failed');
+      const rows=payload[kind]||[];target.dataset.loaded='true';
+      if(!rows.length){target.innerHTML='<div class="money-empty">No '+kind+' yet.</div>';return}
+      target.innerHTML=kind==='orders'?rows.map(row=>`<div class="money-row"><div class="money-row-main"><b>Order #${row.id} · ${escapeHtml(row.customer_name||row.customer_email||'Customer')}</b><small>${escapeHtml(row.store_name||'Store')} · ${row.item_count} item lines · ${escapeHtml(row.status)}</small></div><b>${money(row.total)}</b></div>`).join(''):rows.map(row=>`<div class="money-row"><div class="money-row-main"><b>${escapeHtml(row.name||row.email)}</b><small>${escapeHtml(row.email)} · ${row.order_count} orders</small></div><b>${money(row.lifetime_value)}</b></div>`).join('');
+    }catch(error){target.innerHTML='<div class="money-empty">Unable to load '+kind+': '+escapeHtml(error.message)+'</div>'}
   }
   $$('.dash-nav button').forEach(button=>{
     button.type='button';
     button.dataset.dashboardTarget=button.textContent.trim().toLowerCase();
-    button.addEventListener('click',()=>activate(button.dataset.dashboardTarget));
+    button.addEventListener('click',()=>{const target=button.dataset.dashboardTarget;if(target==='products'||target==='designs'){location.href='/text.html';return}activate(target)});
   });
   nav.setAttribute('aria-label','Dashboard sections');
   activate('overview');
