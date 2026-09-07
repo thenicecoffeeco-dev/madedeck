@@ -14,7 +14,7 @@ const {createAccessControl}=require('./access-control');
 const {bootstrapPlatformOwner,ensureAccountMembership,createSecurityAudit}=require('./tenant-foundation');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.7.7';
+const APP_VERSION='0.7.8';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -225,7 +225,16 @@ app.get('/api/me/tenancy',requireUser,async(req,res)=>{
     `SELECT am.id membership_id,am.account_id,a.account_key,a.account_type,am.role_key,am.status
      FROM account_memberships am JOIN accounts a ON a.id=am.account_id
      WHERE am.user_id=? ORDER BY (a.account_key='madedeck') DESC,(am.role_key='super') DESC,am.id`,[req.user.id]);
-  res.json({ok:true,version:APP_VERSION,user_id:req.user.id,current:{account_id:req.user.account_id,account_key:req.user.account_key,acting_role:req.user.acting_role},owned_accounts,memberships});
+  let platform_owner=null;
+  if(req.user.role==='platform_admin'){
+    const [owners]=await db().execute(
+      `SELECT ti.account_id,ti.owner_user_id,u.email,u.status
+       FROM tenant_identities ti JOIN accounts a ON a.id=ti.account_id
+       LEFT JOIN users u ON u.id=ti.owner_user_id
+       WHERE a.account_key='madedeck' LIMIT 1`);
+    platform_owner=owners[0]||null;
+  }
+  res.json({ok:true,version:APP_VERSION,user_id:req.user.id,current:{account_id:req.user.account_id,account_key:req.user.account_key,acting_role:req.user.acting_role},platform_owner,owned_accounts,memberships});
 });
 const tenantAccess=createAccessControl({session:durableSession,audit:createSecurityAudit(db())});
 app.get('/api/v1/account/context',tenantAccess.resolve,tenantAccess.authenticated,tenantAccess.tenant,
