@@ -6,13 +6,6 @@ function cleanEmail(value){return String(value||'').trim().toLowerCase();}
 
 async function bootstrapPlatformOwner(database,email){
   const ownerEmail=cleanEmail(email);
-  if(!ownerEmail)return {configured:false,assigned:false,reason:'email_not_configured'};
-  const [users]=await database.execute(
-    "SELECT id,email,role FROM users WHERE email=? AND status='active' LIMIT 1",[ownerEmail]);
-  const user=users[0];
-  if(!user)return {configured:true,assigned:false,reason:'user_not_found'};
-  if(user.role!=='platform_admin')return {configured:true,assigned:false,reason:'platform_admin_required'};
-
   const connection=typeof database.getConnection==='function'?await database.getConnection():database;
   try{
     if(connection.beginTransaction)await connection.beginTransaction();
@@ -24,12 +17,28 @@ async function bootstrapPlatformOwner(database,email){
       'INSERT IGNORE INTO tenant_identities(account_id,tenant_uuid,owner_user_id) VALUES(?,UUID(),NULL)',[account.id]);
     const [[tenant]]=await connection.execute(
       'SELECT owner_user_id FROM tenant_identities WHERE account_id=? FOR UPDATE',[account.id]);
-    if(tenant.owner_user_id!==null&&Number(tenant.owner_user_id)!==Number(user.id)){
-      const error=new Error('platform_owner_already_assigned');
-      error.code='OWNER_CONFLICT';
-      throw error;
-    }
-    if(tenant.owner_user_id===null){
+    let user;
+    if(tenant.owner_user_id!==null){
+      const [owners]=await connection.execute(
+        "SELECT id,email,role FROM users WHERE id=? AND status='active' LIMIT 1",[tenant.owner_user_id]);
+      user=owners[0];
+      if(!user)throw new Error('assigned_platform_owner_unavailable');
+    }else{
+      if(!ownerEmail){
+        if(connection.commit)await connection.commit();
+        return {configured:false,assigned:false,reason:'email_not_configured'};
+      }
+      const [users]=await connection.execute(
+        "SELECT id,email,role FROM users WHERE email=? AND status='active' LIMIT 1",[ownerEmail]);
+      user=users[0];
+      if(!user){
+        if(connection.commit)await connection.commit();
+        return {configured:true,assigned:false,reason:'user_not_found'};
+      }
+      if(user.role!=='platform_admin'){
+        if(connection.commit)await connection.commit();
+        return {configured:true,assigned:false,reason:'platform_admin_required'};
+      }
       await connection.execute(
         'UPDATE tenant_identities SET owner_user_id=? WHERE account_id=? AND owner_user_id IS NULL',[user.id,account.id]);
     }
@@ -38,7 +47,7 @@ async function bootstrapPlatformOwner(database,email){
        VALUES(?,?,NULL,NULL,'super','active')
        ON DUPLICATE KEY UPDATE role_key='super',status='active'`,[account.id,user.id]);
     await connection.execute(
-      'INSERT IGNORE INTO identity_emails(user_id,email,is_primary,verified_at) VALUES(?,?,1,NOW())',[user.id,ownerEmail]);
+      'INSERT IGNORE INTO identity_emails(user_id,email,is_primary,verified_at) VALUES(?,?,1,NOW())',[user.id,cleanEmail(user.email)]);
     if(connection.commit)await connection.commit();
     return {configured:true,assigned:true,accountId:Number(account.id),userId:Number(user.id)};
   }catch(error){
@@ -56,7 +65,7 @@ async function ensureAccountMembership(database,user){
      FROM tenant_identities ti JOIN accounts a ON a.id=ti.account_id
      JOIN account_memberships am ON am.account_id=a.id AND am.user_id=ti.owner_user_id
      WHERE ti.owner_user_id=? AND am.status='active' AND a.status='active'
-     ORDER BY am.id LIMIT 1`,[user.id]);
+     ORDER BY (am.role_key='super') DESC,am.id LIMIT 1`,[user.id]);
   if(owned[0])return owned[0];
 
   const [existing]=await database.execute(
