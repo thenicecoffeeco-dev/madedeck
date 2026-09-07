@@ -122,7 +122,7 @@ async function transferPlatformOwner(database,{fromUserId,toUserId,toEmail,confi
   const confirmationText=String(confirmation||'').trim();
   const parsed=confirmationText.match(/^madedeck:(\d+):(\d+)$/);
   const fromId=Number(fromUserId||parsed?.[1]),toId=Number(toUserId||parsed?.[2]),email=cleanEmail(toEmail);
-  if(!fromUserId&&!toUserId&&!toEmail&&!confirmation)return {configured:false,transferred:false};
+  if(!fromUserId&&!toUserId&&!confirmation)return {configured:false,transferred:false};
   if(!Number.isSafeInteger(fromId)||fromId<1||!Number.isSafeInteger(toId)||toId<1||!email){
     throw new Error('invalid_owner_transfer_configuration');
   }
