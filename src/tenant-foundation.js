@@ -119,12 +119,14 @@ async function ensureAccountMembership(database,user){
 }
 
 async function transferPlatformOwner(database,{fromUserId,toUserId,toEmail,confirmation}={}){
-  const fromId=Number(fromUserId),toId=Number(toUserId),email=cleanEmail(toEmail);
+  const confirmationText=String(confirmation||'').trim();
+  const parsed=confirmationText.match(/^madedeck:(\d+):(\d+)$/);
+  const fromId=Number(fromUserId||parsed?.[1]),toId=Number(toUserId||parsed?.[2]),email=cleanEmail(toEmail);
   if(!fromUserId&&!toUserId&&!toEmail&&!confirmation)return {configured:false,transferred:false};
   if(!Number.isSafeInteger(fromId)||fromId<1||!Number.isSafeInteger(toId)||toId<1||!email){
     throw new Error('invalid_owner_transfer_configuration');
   }
-  if(String(confirmation)!==`madedeck:${fromId}:${toId}`)throw new Error('owner_transfer_confirmation_mismatch');
+  if(confirmationText!==`madedeck:${fromId}:${toId}`)throw new Error('owner_transfer_confirmation_mismatch');
   const connection=typeof database.getConnection==='function'?await database.getConnection():database;
   try{
     if(connection.beginTransaction)await connection.beginTransaction();
