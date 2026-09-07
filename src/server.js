@@ -11,10 +11,10 @@ const {createSystemMessagesRouter}=require('./system-messages');
 const {createConnectionBackbone}=require('./connection-backbone');
 const {runConfiguredMigrations}=require('./migration-runner');
 const {createAccessControl}=require('./access-control');
-const {bootstrapPlatformOwner,ensureAccountMembership,createSecurityAudit}=require('./tenant-foundation');
+const {bootstrapPlatformOwner,transferPlatformOwner,ensureAccountMembership,createSecurityAudit}=require('./tenant-foundation');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.7.8';
+const APP_VERSION='0.7.9';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -291,6 +291,18 @@ async function boot(){
   }catch(error){
     migrationState={...migrationState,ready:false,blocking_error:'owner_bootstrap_conflict'};
     console.error('MadeDeck owner bootstrap blocked:',error.message);
+  }
+  try{
+    const transfer=await transferPlatformOwner(db(),{
+      fromUserId:process.env.MADEDECK_OWNER_TRANSFER_FROM_USER_ID,
+      toUserId:process.env.MADEDECK_OWNER_TRANSFER_TO_USER_ID,
+      toEmail:process.env.MADEDECK_OWNER_TRANSFER_TO_EMAIL,
+      confirmation:process.env.MADEDECK_OWNER_TRANSFER_CONFIRM
+    });
+    console.log(`MadeDeck owner transfer configured=${transfer.configured} transferred=${transfer.transferred}${transfer.alreadyCompleted?' already_completed=true':''}`);
+  }catch(error){
+    migrationState={...migrationState,ready:false,blocking_error:'owner_transfer_blocked'};
+    console.error('MadeDeck owner transfer blocked:',error.message);
   }
   try{
     const swarmOwner=await ensureVinnyEntitlement(db);
