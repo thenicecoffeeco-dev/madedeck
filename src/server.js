@@ -13,9 +13,11 @@ const {runConfiguredMigrations}=require('./migration-runner');
 const {createAccessControl}=require('./access-control');
 const {bootstrapPlatformOwner,transferPlatformOwner,ensureAccountMembership,createSecurityAudit}=require('./tenant-foundation');
 const {validStoreId,canAccessStore,listOffers}=require('./store-access');
+const {createWorkspaceRouter}=require('./workspace-routes');
+const {createOperationsRouter}=require('./operations-routes');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.8.5';
+const APP_VERSION='0.9.0';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -219,6 +221,8 @@ app.post('/api/auth/logout',async(req,res)=>{const token=req.cookies.md_session;
 app.get('/api/me',requireUser,(req,res)=>res.json({ok:true,user:req.user}));
 const securityAudit=createSecurityAudit(db());
 const tenantAccess=createAccessControl({session:durableSession,audit:securityAudit});
+app.use('/api/workspace',createWorkspaceRouter({db,access:tenantAccess}));
+app.use('/api/operations',createOperationsRouter({db,access:tenantAccess}));
 app.get('/api/v1/account/context',tenantAccess.resolve,tenantAccess.authenticated,tenantAccess.tenant,
   tenantAccess.authorize('tenant.settings.manage'),(req,res)=>{
     const c=req.authContext;

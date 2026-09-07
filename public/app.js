@@ -99,12 +99,29 @@ ensureCart();renderCart();
 $('#buyNow')?.addEventListener('click',()=>{const payload=buildProductionPayload();const files={};Object.entries(state.layers).forEach(([id,l])=>{if(l.file)files[id]=l.file});state.cart.push({payload,files});renderCart();$('#mdCart').classList.add('open')});
 
 $('#joinForm')?.addEventListener('submit',async e=>{e.preventDefault();const msg=$('#joinMsg');msg.textContent='Sending…';try{const r=await fetch('/api/inquiries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:$('#joinName').value,company:$('#joinCompany').value,email:$('#joinEmail').value,message:$('#joinInterest').value,source:'merchant-signup'})});const j=await r.json();if(!j.ok)throw new Error(j.error||'Could not send');msg.textContent=`Received — inquiry #${j.id}. It is now visible in the MadeDeck admin console.`;e.target.reset()}catch(err){msg.textContent=`Could not send: ${err.message}`}});
-$('#loginForm')?.addEventListener('submit',async e=>{e.preventDefault();const msg=$('#loginMsg');msg.textContent='Signing in…';try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',body:JSON.stringify({email:$('#loginEmail').value,password:$('#loginPassword').value})});const j=await r.json().catch(()=>({ok:false,error:`server_response_${r.status}`}));if(!r.ok||!j.ok)throw new Error(j.error||`login_failed_${r.status}`);msg.textContent='';showPage('dashboard');loadOffers();configureDashboard(j.user)}catch(err){msg.textContent=`Login failed: ${err.message}`;}});
+$('#loginForm')?.addEventListener('submit',async e=>{e.preventDefault();const msg=$('#loginMsg');msg.textContent='Signing in…';try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',body:JSON.stringify({email:$('#loginEmail').value,password:$('#loginPassword').value})});const j=await r.json().catch(()=>({ok:false,error:`server_response_${r.status}`}));if(!r.ok||!j.ok)throw new Error(j.error||`login_failed_${r.status}`);msg.textContent='';showPage('dashboard');loadOffers();loadSavedProducts();configureDashboard(j.user)}catch(err){msg.textContent=`Login failed: ${err.message}`;}});
 $('#logoutBtn')?.addEventListener('click',async()=>{await fetch('/api/auth/logout',{method:'POST'});showPage('home')});
-$('#saveProductBtn')?.addEventListener('click',()=>{const n=$('#dashName').value.trim()||'Untitled product',p=Number($('#dashPrice').value||0);const row=document.createElement('div');row.className='saved-row';row.innerHTML=`<span>${n}</span><b>$${p.toFixed(2)}</b>`;$('#savedProducts').prepend(row)});
+async function loadSavedProducts(){try{const response=await fetch('/api/workspace/products',{credentials:'same-origin'}),payload=await response.json();if(!response.ok)return;$('#savedProducts').innerHTML=(payload.products||[]).map(row=>`<div class="saved-row"><span>${escapeHtml(row.name)}<small>${escapeHtml(row.product?.base_product||'Custom product')}</small></span><b>${money(row.retail_price)}</b></div>`).join('')||'<div class="money-empty">No saved products yet.</div>'}catch{}}
+$('#saveProductBtn')?.addEventListener('click',async()=>{const button=$('#saveProductBtn'),name=$('#dashName').value.trim()||'Untitled product',price=Number($('#dashPrice').value||0),base=$('#dashBase').value;if(!Number.isFinite(price)||price<0)return;button.disabled=true;button.textContent='Saving…';try{const key=(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(16).slice(2)),response=await fetch('/api/workspace/products/'+encodeURIComponent(key),{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,retail_price:price,product:{name,retail_price:price,base_product:base,status:'draft'}})}),payload=await response.json();if(!response.ok)throw Error(payload.error||'Request failed');await loadSavedProducts()}catch(error){alert('Could not save product: '+error.message)}finally{button.disabled=false;button.textContent='Save product'}});
 $$('[data-offertype]').forEach(b=>b.addEventListener('click',()=>{offerType=b.dataset.offertype;$$('[data-offertype]').forEach(x=>x.classList.toggle('active',x===b))}));
 async function loadOffers(){try{const r=await fetch('/api/offers');const j=await r.json();if(!j.ok)return;$('#offerCount').textContent=j.offers.filter(o=>o.status==='live').length;$('#offerList').innerHTML=j.offers.length?j.offers.map(o=>`<div class="offer-row"><span><b>${o.title}</b><br><small>${o.type} · ${o.status}</small></span><span>$${Number(o.retail_price).toFixed(2)}</span></div>`).join(''):'No offers yet.'}catch{}}
 $('#saveOfferBtn')?.addEventListener('click',async()=>{const msg=$('#offerMsg');msg.textContent='Saving…';const body={store_id:1,type:offerType,title:$('#offerTitle').value.trim(),retail_price:Number($('#offerPrice').value),minimum_qty:Number($('#offerQty').value||1),access_mode:$('#offerAccess').value,fulfillment_mode:$('#offerFulfillment').value,closes_at:$('#offerClose').value||null};try{const r=await fetch('/api/offers',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!j.ok)throw new Error(j.error);msg.textContent=`Saved offer #${j.id}`;loadOffers()}catch(err){msg.textContent=`Could not save: ${err.message||'error'}`}});
+
+async function loadSetting(kind){
+  const target=$('#settingsWorkspace');if(!target)return;target.innerHTML='<div class="money-empty">Checking connection…</div>';
+  try{
+    const [healthResponse,cartResponse,contextResponse]=await Promise.all([fetch('/health'),fetch('/api/cart/context'),fetch('/api/v1/account/context',{credentials:'same-origin'})]);
+    const health=await healthResponse.json(),cart=await cartResponse.json(),context=await contextResponse.json();
+    const views={
+      payments:[['Stripe payments',health.stripe?.payments?'Connected':'Not configured'],['Stripe webhook',health.stripe?.webhook?'Connected':'Not configured'],['Checkout providers',Object.entries(cart.providers||{}).filter(([,on])=>on).map(([name])=>name).join(', ')||'None']],
+      team:[['Account',context.account?.key||'Unavailable'],['Role',context.actor?.role||'Unavailable'],['User ID',context.actor?.user_id||'Unavailable']],
+      fulfillment:[['Direct shipping','Available'],['Office delivery','Available'],['Production handoff','Manifest + adapter ready']],
+      growth:[['Public domain',location.hostname],['Storefront','Connected'],['Tracking','Per-tenant configuration ready']]
+    };
+    target.innerHTML=(views[kind]||[]).map(([label,value])=>`<div class="money-row"><div class="money-row-main"><b>${escapeHtml(label)}</b></div><span>${escapeHtml(value)}</span></div>`).join('');
+  }catch(error){target.innerHTML='<div class="money-empty">Unable to inspect this setting: '+escapeHtml(error.message)+'</div>'}
+}
+$('[data-setting]').forEach(button=>button.addEventListener('click',()=>loadSetting(button.dataset.setting)));
 
 const money=v=>`$${Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 function configureDashboard(user){const admin=user?.role==='platform_admin';$('#adminMonetization').dataset.authorized=admin?'true':'false';$('#adminMonetization').hidden=!admin;if(admin){$('#dashboardEyebrow').textContent='MADEDECK ADMIN';$('#dashboardTitle').textContent='The business, clearly.';$('#dashboardSub').textContent='Pricing, modules, subscribers, inquiries and credits without hunting through five systems.';loadMonetization()}}
@@ -129,9 +146,9 @@ function initDashboardNavigation(){
     panel.innerHTML=`<span class="eyebrow">MADEDECK · ${title.toUpperCase()}</span><h2>${title}</h2><p>${body}</p>${action}`;
     content.appendChild(panel);panel.querySelector('[data-page]')?.addEventListener('click',()=>showPage('products'));placeholders[key]=panel;
   };
-  placeholder('orders','Orders','Existing order data is preserved. The tenant-secured order workspace is the next backend connection in this rebuild.');
-  placeholder('designs','Designs','Your customizer and saved-design work remain intact. Open the product studio to continue designing.','<button class="btn btn-dark" type="button" data-page="products">Open product studio</button>');
-  placeholder('customers','Customers','Existing customer and subscriber records are preserved. Their tenant-scoped workspace is being reconnected.');
+  placeholder('orders','Orders','Live tenant-scoped order records load here.','<div id="ordersWorkspace" class="money-list"><div class="money-empty">Loading orders…</div></div>');
+  placeholder('designs','Designs','Open the restored MadeDeck Product Studio to create and manage tenant-owned designs.','<a class="btn btn-dark" href="/text.html">Open product studio</a>');
+  placeholder('customers','Customers','Customers are derived from the orders this account may access.','<div id="customersWorkspace" class="money-list"><div class="money-empty">Loading customers…</div></div>');
   placeholder('modules','Modules','Module controls are available to the MadeDeck platform owner through the monetization console.');
   const map={
     overview:[product,createOffer,savedOffers,pricing,monetization,settings],
@@ -152,11 +169,24 @@ function initDashboardNavigation(){
     if(!shown&&['modules','monetization'].includes(requested))placeholders.modules.hidden=false;
     $$('.dash-nav button').forEach(button=>button.classList.toggle('active',button.dataset.dashboardTarget===requested));
     content.scrollIntoView({behavior:'smooth',block:'start'});
+    if(requested==='orders')loadOperations('orders');
+    if(requested==='customers')loadOperations('customers');
+  }
+  async function loadOperations(kind){
+    const target=$('#'+kind+'Workspace');if(!target||target.dataset.loaded==='true')return;
+    target.innerHTML='<div class="money-empty">Loading '+kind+'…</div>';
+    try{
+      const response=await fetch('/api/operations/'+kind,{credentials:'same-origin'}),payload=await response.json();
+      if(!response.ok)throw Error(payload.error||'Request failed');
+      const rows=payload[kind]||[];target.dataset.loaded='true';
+      if(!rows.length){target.innerHTML='<div class="money-empty">No '+kind+' yet.</div>';return}
+      target.innerHTML=kind==='orders'?rows.map(row=>`<div class="money-row"><div class="money-row-main"><b>Order #${row.id} · ${escapeHtml(row.customer_name||row.customer_email||'Customer')}</b><small>${escapeHtml(row.store_name||'Store')} · ${row.item_count} item lines · ${escapeHtml(row.status)}</small></div><b>${money(row.total)}</b></div>`).join(''):rows.map(row=>`<div class="money-row"><div class="money-row-main"><b>${escapeHtml(row.name||row.email)}</b><small>${escapeHtml(row.email)} · ${row.order_count} orders</small></div><b>${money(row.lifetime_value)}</b></div>`).join('');
+    }catch(error){target.innerHTML='<div class="money-empty">Unable to load '+kind+': '+escapeHtml(error.message)+'</div>'}
   }
   $$('.dash-nav button').forEach(button=>{
     button.type='button';
     button.dataset.dashboardTarget=button.textContent.trim().toLowerCase();
-    button.addEventListener('click',()=>activate(button.dataset.dashboardTarget));
+    button.addEventListener('click',()=>{const target=button.dataset.dashboardTarget;if(target==='products'||target==='designs'){location.href='/text.html';return}activate(target)});
   });
   nav.setAttribute('aria-label','Dashboard sections');
   activate('overview');
