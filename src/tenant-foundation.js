@@ -59,14 +59,26 @@ async function bootstrapPlatformOwner(database,email){
 }
 
 async function ensureAccountMembership(database,user){
-  const [owned]=await database.execute(
-    `SELECT am.id membership_id,am.account_id,am.store_id,am.profile_key,am.role_key,
-            am.permissions_json,am.subscription_json,a.account_key,a.account_type
+  const [ownedTenants]=await database.execute(
+    `SELECT ti.account_id,a.account_key,a.account_type
      FROM tenant_identities ti JOIN accounts a ON a.id=ti.account_id
-     JOIN account_memberships am ON am.account_id=a.id AND am.user_id=ti.owner_user_id
-     WHERE ti.owner_user_id=? AND am.status='active' AND a.status='active'
-     ORDER BY (am.role_key='super') DESC,am.id LIMIT 1`,[user.id]);
-  if(owned[0])return owned[0];
+     WHERE ti.owner_user_id=? AND a.status='active'
+     ORDER BY (a.account_key='madedeck') DESC,ti.account_id LIMIT 1`,[user.id]);
+  const ownedTenant=ownedTenants[0];
+  if(ownedTenant){
+    await database.execute(
+      `INSERT INTO account_memberships(account_id,user_id,store_id,profile_key,role_key,status)
+       VALUES(?,?,NULL,NULL,'super','active')
+       ON DUPLICATE KEY UPDATE status='active'`,[ownedTenant.account_id,user.id]);
+    const [[ownerMembership]]=await database.execute(
+      `SELECT am.id membership_id,am.account_id,am.store_id,am.profile_key,am.role_key,
+              am.permissions_json,am.subscription_json,a.account_key,a.account_type
+       FROM account_memberships am JOIN accounts a ON a.id=am.account_id
+       WHERE am.account_id=? AND am.user_id=? AND am.role_key='super' AND am.status='active' LIMIT 1`,
+      [ownedTenant.account_id,user.id]);
+    if(!ownerMembership)throw new Error('owner_membership_unavailable');
+    return ownerMembership;
+  }
 
   const [existing]=await database.execute(
     `SELECT am.id membership_id,am.account_id,am.store_id,am.profile_key,am.role_key,

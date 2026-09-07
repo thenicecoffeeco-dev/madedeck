@@ -19,13 +19,21 @@ test('owner bootstrap refuses a non-admin identity before assignment',async()=>{
 test('membership resolution trusts immutable owner id before ordinary memberships',async()=>{
   const calls=[];
   const ownerMembership={membership_id:3,account_id:1,account_key:'madedeck',account_type:'platform',role_key:'super'};
-  const database={execute:async(sql,params)=>{calls.push({sql,params});return [[ownerMembership]];}};
+  let call=0;
+  const database={execute:async(sql,params)=>{
+    calls.push({sql,params});call+=1;
+    if(call===1)return [[{account_id:1,account_key:'madedeck',account_type:'platform'}]];
+    if(call===2)return [{affectedRows:1}];
+    return [[ownerMembership]];
+  }};
   const result=await ensureAccountMembership(database,{id:9,email:'new-address@example.com'});
   assert.equal(result,ownerMembership);
   assert.match(calls[0].sql,/tenant_identities/);
   assert.deepEqual(calls[0].params,[9]);
   assert.doesNotMatch(calls[0].sql,/email/i);
-  assert.equal(calls.length,1);
+  assert.match(calls[1].sql,/role_key,status/);
+  assert.deepEqual(calls[2].params,[1,9]);
+  assert.equal(calls.length,3);
 });
 
 test('existing non-owner membership remains stable without email inference',async()=>{
