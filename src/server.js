@@ -14,7 +14,7 @@ const {createAccessControl}=require('./access-control');
 const {bootstrapPlatformOwner,transferPlatformOwner,ensureAccountMembership,createSecurityAudit}=require('./tenant-foundation');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.8.0';
+const APP_VERSION='0.8.1';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -296,7 +296,7 @@ async function boot(){
     const transfer=await transferPlatformOwner(db(),{
       fromUserId:process.env.MADEDECK_OWNER_TRANSFER_FROM_USER_ID,
       toUserId:process.env.MADEDECK_OWNER_TRANSFER_TO_USER_ID,
-      toEmail:process.env.MADEDECK_OWNER_TRANSFER_TO_EMAIL||process.env.MADEDECK_BOOTSTRAP_OWNER_EMAIL||process.env.SEED_ADMIN_EMAIL,
+      toEmail:process.env.MADEDECK_OWNER_TRANSFER_TO_EMAIL||process.env.MADEDECK_BOOTSTRAP_OWNER_EMAIL||process.env.SEED_ADMIN_EMAIL||'madedeck@proton.me',
       confirmation:process.env.MADEDECK_OWNER_TRANSFER_CONFIRM
     });
     console.log(`MadeDeck owner transfer configured=${transfer.configured} transferred=${transfer.transferred}${transfer.alreadyCompleted?' already_completed=true':''}`);
