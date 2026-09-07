@@ -71,3 +71,8 @@ test('owner transfer derives ids from exact confirmation when host omits redunda
   assert.equal(result.alreadyCompleted,true);
   assert.equal(result.userId,20);
 });
+
+test('owner transfer stays disabled after recovery secrets are removed',async()=>{
+  const database={execute(){throw new Error('database must not be touched');}};
+  assert.deepEqual(await transferPlatformOwner(database,{toEmail:'madedeck@proton.me'}),{configured:false,transferred:false});
+});
