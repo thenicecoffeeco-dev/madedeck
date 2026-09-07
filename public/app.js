@@ -127,7 +127,7 @@ function initDashboardNavigation(){
     panel.dataset.dashboardPanel=key;
     panel.hidden=true;
     panel.innerHTML=`<span class="eyebrow">MADEDECK · ${title.toUpperCase()}</span><h2>${title}</h2><p>${body}</p>${action}`;
-    content.appendChild(panel);placeholders[key]=panel;
+    content.appendChild(panel);panel.querySelector('[data-page]')?.addEventListener('click',()=>showPage('products'));placeholders[key]=panel;
   };
   placeholder('orders','Orders','Existing order data is preserved. The tenant-secured order workspace is the next backend connection in this rebuild.');
   placeholder('designs','Designs','Your customizer and saved-design work remain intact. Open the product studio to continue designing.','<button class="btn btn-dark" type="button" data-page="products">Open product studio</button>');
