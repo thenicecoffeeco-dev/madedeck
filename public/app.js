@@ -150,10 +150,10 @@ function initDashboardNavigation(){
       if(panel.tagName==='DETAILS'&&requested!=='overview')panel.open=true;
     });
     if(!shown&&['modules','monetization'].includes(requested))placeholders.modules.hidden=false;
-    $('.dash-nav button').forEach(button=>button.classList.toggle('active',button.dataset.dashboardTarget===requested));
+    $$('.dash-nav button').forEach(button=>button.classList.toggle('active',button.dataset.dashboardTarget===requested));
     content.scrollIntoView({behavior:'smooth',block:'start'});
   }
-  $('.dash-nav button').forEach(button=>{
+  $$('.dash-nav button').forEach(button=>{
     button.type='button';
     button.dataset.dashboardTarget=button.textContent.trim().toLowerCase();
     button.addEventListener('click',()=>activate(button.dataset.dashboardTarget));
