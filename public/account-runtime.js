@@ -36,7 +36,7 @@
       <div class="full"><button class="action lime">Save account and continue</button></div><div id="livePageMsg" class="full" aria-live="polite"></div>
     </form>
     <div class="live-step ${p.product_count>0?'done':''}"><b>02</b><div><h3>Create up to ${p.product_limit} products</h3><p>The same canonical Maker saves products and designs only to this account.</p><button class="action white" type="button" id="openLiveStudio">Open product studio</button></div></div>
-    <div class="live-step ${p.storefront_published?'done':''}"><b>03</b><div><h3>Publish your page</h3><p>${p.storefront_published?`Public at ${esc(storeUrl())}`:'Your page remains private until you publish it.'}</p><button class="action" type="button" id="publishLiveStore" ${!p.onboarding_complete?'disabled':''}>${p.storefront_published?'Store published':'Publish free store'}</button></div></div>`;
+    <div class="live-step ${p.storefront_published?'done':''}"><b>03</b><div><h3>Publish your page</h3><p>${p.storefront_published?`Public at ${esc(storeUrl())}`:'Your page remains private until you have saved at least one product.'}</p><button class="action" type="button" id="publishLiveStore" ${!p.onboarding_complete||!p.product_count?'disabled':''}>${p.storefront_published?'Store published':'Publish free store'}</button></div></div>`;
     $('#openLiveStudio').onclick=()=>document.querySelector('[data-member-panel="studio"]')?.click();
     $('#livePageForm').onsubmit=saveProfile;$('#publishLiveStore').onclick=publishStore;
   }
