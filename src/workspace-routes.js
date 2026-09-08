@@ -20,6 +20,16 @@ function createWorkspaceRouter({db,access}){
   const router=express.Router();
   const guard=[access.resolve,access.authenticated,access.tenant,access.authorize('maker.use')];
 
+  router.get('/context',access.resolve,access.authenticated,access.tenant,async(req,res,next)=>{
+    try{
+      const [rows]=await db().execute('SELECT account_key,account_type,name,metadata_json FROM accounts WHERE id=? AND status=\'active\' LIMIT 1',[req.authContext.accountId]);
+      const account=rows[0];if(!account)return res.status(404).json({ok:false,error:'account_not_found',request_id:req.requestId});
+      const metadata=parseJson(account.metadata_json)||{},planKey=metadata.plan_key||'free',role=req.authContext.role;
+      const surface=role==='super'||role==='operator'?'platform':role==='partner'?'partner':planKey==='free'?'free':'member';
+      res.json({ok:true,context:{account_id:req.authContext.accountId,account_key:account.account_key,account_type:account.account_type,account_name:account.name,role,plan_key:planKey,surface,global_access:surface==='platform',product_limit:Number(metadata.product_limit||3)}});
+    }catch(error){next(error)}
+  });
+
   router.get('/profile',...guard,async(req,res,next)=>{
     try{
       const [rows]=await db().execute('SELECT account_key,account_type,name,metadata_json FROM accounts WHERE id=? AND status=\'active\' LIMIT 1',[req.authContext.accountId]);

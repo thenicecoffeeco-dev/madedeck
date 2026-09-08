@@ -18,7 +18,7 @@ const {createOperationsRouter}=require('./operations-routes');
 const {createStorefrontRouter}=require('./storefront-routes');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.11.6';
+const APP_VERSION='0.11.7';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -171,7 +171,11 @@ app.get('/member-account.html',async(req,res,next)=>{
     const user=await durableSession(req);
     if(!user)return res.redirect(302,'/?auth=required');
     const role=String(user.acting_role||'customer').replace(/[^a-z_]/g,'');
+    const platformAccess=role==='super'||role==='operator';
+    if(!platformAccess&&['control-room','pricing-controls','urgent-review'].includes(String(req.query.module||'')))return res.redirect(302,'/member-account.html?module=member-workspace');
+    const scopeCss=platformAccess?'':`<style id="serverTenantGate">#profileSelect,#resetDemo,[data-view="store"],[data-view="control"],#view-store,#view-control,#provisionModal{display:none!important}</style>`;
     const html=fs.readFileSync(path.join(publicDir,'member-account.html'),'utf8')
+      .replace('</head>',`${scopeCss}</head>`)
       .replace('<body>',`<body data-auth-role="${role}">`)
       .replace('</body>',`<script src="/account-runtime.js?v=${APP_VERSION}"></script></body>`);
     res.set('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -192,11 +196,18 @@ async function durableSession(req){
   const token=req.cookies.md_session;
   if(!token)return null;
   const cached=sessions.get(token);
-  if(cached)return cached;
+  if(cached){
+    if(cached.account_type!=='platform'&&cached.acting_role==='merchant'){
+      const [accountRows]=await db().execute('SELECT metadata_json FROM accounts WHERE id=? LIMIT 1',[cached.account_id]);
+      let metadata={};try{metadata=typeof accountRows[0]?.metadata_json==='string'?JSON.parse(accountRows[0].metadata_json):(accountRows[0]?.metadata_json||{})}catch{}
+      if(metadata.created_via==='public_signup'&&(metadata.plan_key||'free')==='free')cached.acting_role='creator';
+    }
+    return cached;
+  }
   const [rows]=await db().execute(
     `SELECT u.id,u.email,u.role,s.session_key,s.account_id,s.store_id,s.profile_key,s.acting_role,
             s.permissions_json,s.subscription_json,
-            a.account_key,a.account_type
+            a.account_key,a.account_type,a.metadata_json
      FROM auth_sessions s JOIN users u ON u.id=s.user_id
      LEFT JOIN accounts a ON a.id=s.account_id
      WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>NOW() AND u.status='active' LIMIT 1`,
@@ -204,6 +215,10 @@ async function durableSession(req){
   );
   const current=rows[0]||null;
   if(current){
+    let metadata={};
+    try{metadata=typeof current.metadata_json==='string'?JSON.parse(current.metadata_json):(current.metadata_json||{})}catch{}
+    if(current.account_type!=='platform'&&metadata.created_via==='public_signup'&&(metadata.plan_key||'free')==='free')current.acting_role='creator';
+    delete current.metadata_json;
     sessions.set(token,current);
     await db().execute('UPDATE auth_sessions SET last_seen_at=NOW() WHERE token_hash=?',[sessionHash(token)]);
   }
@@ -248,17 +263,17 @@ app.post('/api/auth/register',async(req,res)=>{
     const userId=Number(userResult.insertId);
     const baseKey=company.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,55)||'merchant';
     const accountKey=baseKey+'-'+crypto.randomBytes(3).toString('hex');
-    const [accountResult]=await connection.execute("INSERT INTO accounts(account_key,account_type,name,status,metadata_json) VALUES(?,?,?,'active',?)",[accountKey,'merchant',company,JSON.stringify({launch:String(req.body?.launch||'').slice(0,160),created_via:'public_signup'})]);
+    const [accountResult]=await connection.execute("INSERT INTO accounts(account_key,account_type,name,status,metadata_json) VALUES(?,?,?,'active',?)",[accountKey,'merchant',company,JSON.stringify({launch:String(req.body?.launch||'').slice(0,160),created_via:'public_signup',plan_key:'free',product_limit:3})]);
     const accountId=Number(accountResult.insertId);
     await connection.execute('INSERT INTO tenant_identities(account_id,tenant_uuid,owner_user_id) VALUES(?,UUID(),?)',[accountId,userId]);
-    const [membershipResult]=await connection.execute("INSERT INTO account_memberships(account_id,user_id,store_id,profile_key,role_key,status) VALUES(?,?,NULL,?,?,'active')",[accountId,userId,accountKey,'merchant']);
+    const [membershipResult]=await connection.execute("INSERT INTO account_memberships(account_id,user_id,store_id,profile_key,role_key,status) VALUES(?,?,NULL,?,?,'active')",[accountId,userId,accountKey,'creator']);
     await connection.commit();
     const token=crypto.randomBytes(32).toString('hex'),sessionKey=crypto.randomUUID();
-    const scoped={id:userId,email,role:'merchant_admin',session_key:sessionKey,account_id:accountId,account_key:accountKey,account_type:'merchant',store_id:null,profile_key:accountKey,acting_role:'merchant',permissions_json:null,subscription_json:null};
+    const scoped={id:userId,email,role:'merchant_admin',session_key:sessionKey,account_id:accountId,account_key:accountKey,account_type:'merchant',store_id:null,profile_key:accountKey,acting_role:'creator',permissions_json:null,subscription_json:null};
     sessions.set(token,scoped);
     await db().execute(`INSERT INTO auth_sessions(session_key,user_id,token_hash,account_id,membership_id,store_id,profile_key,acting_role,permissions_json,subscription_json,user_agent,ip_hash,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,DATE_ADD(NOW(),INTERVAL 12 HOUR))`,[sessionKey,userId,sessionHash(token),accountId,Number(membershipResult.insertId),null,accountKey,'merchant',null,null,String(req.headers['user-agent']||'').slice(0,500),sessionHash(req.ip||'')]);
     res.cookie('md_session',token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',maxAge:1000*60*60*12});
-    res.status(201).json({ok:true,user:{id:userId,email,role:'merchant_admin',account_id:accountId,account_key:accountKey,acting_role:'merchant'},redirect:'/member-account.html?module=member-workspace&onboarding=1'});
+    res.status(201).json({ok:true,user:{id:userId,email,role:'merchant_admin',account_id:accountId,account_key:accountKey,acting_role:'creator'},redirect:'/member-account.html?module=member-workspace&onboarding=1'});
   }catch(error){
     try{await connection.rollback()}catch{}
     console.error('registration failed',error);

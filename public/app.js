@@ -89,6 +89,23 @@ $('.size-grid')?.addEventListener('input',()=>{updateTotals();renderProductionPr
 function buildProductionPayload(){const p=pricing();return {version:'0.4.0',product:{key:pSelect.value,name:pdef().name,color:state.color},pricing:p,decorations:Object.entries(pdef().locations).filter(([id])=>state.enabled.has(id)).map(([id,cfg])=>{const l=state.layers[id]||{};return {location:id,label:cfg.label,charge:cfg.cost||0,source:{kind:l.kind||cfg.text?'text':'upload',name:l.sourceName||null,fullResolution:!!l.file||l.kind==='premade'},placement:{x:l.x??null,y:l.y??null,width:l.w??null,height:l.h??null,flip:!!l.flip,invert:!!l.invert},text:l.text||null,textStyle:l.style||null}})}}
 function buildProductionFormData(payload=buildProductionPayload()){const fd=new FormData();fd.append('configuration',new Blob([JSON.stringify(payload)],{type:'application/json'}),'configuration.json');Object.entries(state.layers).forEach(([id,l])=>{if(l.file)fd.append(`artwork_${id}`,l.file,l.file.name)});return fd}
 window.mdBuildProductionPayload=buildProductionPayload;window.mdBuildProductionFormData=buildProductionFormData;
+async function saveMakerProduct(){
+  const button=$('#mdSaveMakerProduct'),payload=buildProductionPayload(),key=`maker-${payload.product.key}`,unit=Number(payload.pricing?.unit||0);
+  if(button){button.disabled=true;button.textContent='Saving…'}
+  try{
+    const response=await fetch('/api/workspace/products/'+encodeURIComponent(key),{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({name:payload.product.name,retail_price:unit,catalog_product_id:null,product:{...payload,base_product:payload.product.key,status:'draft'}})});
+    const type=response.headers.get('content-type')||'',result=type.includes('application/json')?await response.json():{ok:false,error:`workspace_http_${response.status}`};
+    if(!response.ok||!result.ok)throw Error(result.error||'product_save_failed');
+    await fetch('/api/workspace/designs/'+encodeURIComponent(key),{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({name:payload.product.name,product_key:payload.product.key,schema_version:7,design:payload})});
+    if(button)button.textContent='Saved to your account';
+    parent!==window&&parent.postMessage({source:'madedeck-maker',type:'workspace-product-saved',product_key:key},location.origin);
+  }catch(error){if(button)button.textContent='Save failed: '+error.message}
+  finally{if(button){button.disabled=false;setTimeout(()=>{button.textContent='Save product'},2200)}}
+}
+if(makerEmbed){
+  const order=$('.control-view[data-control="order"]');
+  if(order&&!$('#mdSaveMakerProduct')){const button=document.createElement('button');button.id='mdSaveMakerProduct';button.type='button';button.className='btn btn-light';button.textContent='Save product';button.style.cssText='width:100%;margin:10px 0';button.onclick=saveMakerProduct;order.insertBefore(button,$('#buyNow',order));}
+}
 window.mdCheckoutItems=()=>state.cart.flatMap(({payload})=>{
   const surfaces=Object.fromEntries((payload.decorations||[]).map(decoration=>[decoration.location,[decoration]]));
   const method=payload.product.key==='polo'?'Embroidery':'DTG';
