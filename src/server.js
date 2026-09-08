@@ -17,7 +17,7 @@ const {createWorkspaceRouter}=require('./workspace-routes');
 const {createOperationsRouter}=require('./operations-routes');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.10.0';
+const APP_VERSION='0.10.1';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -220,7 +220,13 @@ function platformEconomics(subtotal){
 app.get('/health',async(req,res)=>{try{await db().query('SELECT 1');res.json({ok:true,mode:'database',database:'connected',version:APP_VERSION,migrations:{mode:migrationState.mode,ready:migrationState.ready,pending:migrationState.migrations?.filter(x=>x.status==='pending').length||0,error:migrationState.blocking_error||null},stripe:{payments:!!stripe,webhook:!!process.env.STRIPE_WEBHOOK_SECRET}});}catch(e){res.status(503).json({ok:false,database:'disconnected',error:e.message});}});
 app.post('/api/auth/login',async(req,res)=>{try{const email=String(req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');const [rows]=await db().execute('SELECT id,email,password_salt,password_hash,role,status FROM users WHERE email=? LIMIT 1',[email]);const u=rows[0];if(!u||u.status!=='active'||!verifyPassword(password,u.password_salt,u.password_hash))return res.status(401).json({ok:false,error:'invalid_credentials'});const membership=await ensureAccountMembership(db(),u);const token=crypto.randomBytes(32).toString('hex'),sessionKey=crypto.randomUUID();const scoped={id:u.id,email:u.email,role:u.role,session_key:sessionKey,account_id:membership.account_id,account_key:membership.account_key,account_type:membership.account_type,store_id:membership.store_id,profile_key:membership.profile_key,acting_role:membership.role_key,permissions_json:membership.permissions_json,subscription_json:membership.subscription_json};sessions.set(token,scoped);try{await db().execute(`INSERT INTO auth_sessions(session_key,user_id,token_hash,account_id,membership_id,store_id,profile_key,acting_role,permissions_json,subscription_json,user_agent,ip_hash,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,DATE_ADD(NOW(),INTERVAL 12 HOUR))`,[sessionKey,u.id,sessionHash(token),membership.account_id,membership.membership_id,membership.store_id,membership.profile_key,membership.role_key,membership.permissions_json,membership.subscription_json,String(req.headers['user-agent']||'').slice(0,500),sessionHash(req.ip||'')]);}catch(sessionError){console.error('durable session unavailable; using runtime session',sessionError.message);}res.cookie('md_session',token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',maxAge:1000*60*60*12});res.json({ok:true,user:{email:u.email,role:u.role,account_key:membership.account_key,profile_key:membership.profile_key,acting_role:membership.role_key}});}catch(error){console.error('login failed',error);res.status(500).json({ok:false,error:'login_service_error',detail:process.env.NODE_ENV==='production'?undefined:error.message});}});
 app.post('/api/auth/logout',async(req,res)=>{const token=req.cookies.md_session;if(token){sessions.delete(token);await db().execute('UPDATE auth_sessions SET revoked_at=NOW() WHERE token_hash=?',[sessionHash(token)]);}res.clearCookie('md_session');res.json({ok:true});});
-app.get('/api/me',requireUser,(req,res)=>res.json({ok:true,user:req.user}));
+app.get('/api/me',async(req,res,next)=>{
+  try{
+    const user=await durableSession(req);
+    if(!user)return res.status(401).json({ok:false,error:'login_required'});
+    res.json({ok:true,user});
+  }catch(error){next(error)}
+});
 const securityAudit=createSecurityAudit(db());
 const tenantAccess=createAccessControl({session:durableSession,audit:securityAudit});
 app.use('/api/workspace',createWorkspaceRouter({db,access:tenantAccess}));
