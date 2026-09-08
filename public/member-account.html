@@ -35,7 +35,7 @@ function renderStore(){const p=profile(),items=p.products||[],c=cart();$('#store
 function renderMember(){const p=profile(),deliveries=activeDeliveries(p.id),receipts=state.receipts.filter(r=>r.profileId===p.id);$('#member-overview').innerHTML=`<div class="head"><div><h1>${esc(p.name)}</h1><p class="sub">Private support workspace. Your product studio, pricing, receipts and files never appear on the public page.</p></div><button class="pill lime" data-go-store>Open public page</button></div><div class="metrics"><div class="metric lime"><small>Membership</small><b>${p.subscribed?esc(p.plan):'Guest'}</b></div><div class="metric"><small>Products</small><b>${p.products.length}</b></div><div class="metric"><small>Inbox</small><b>${deliveries.length}</b></div><div class="metric"><small>Receipts</small><b>${receipts.length}</b></div></div><div class="notice">Public URL: ${esc(storeUrl(p))} · QR code updates automatically when the slug changes.</div><div class="grid2"><div class="card"><h2>Today’s message</h2><p>${esc(p.daily)}</p><button class="action white" data-member-panel-jump="page">Edit daily message</button></div><div class="card"><h2>Private production tools</h2><p class="sub">The customizer is available only when the account plan enables it.</p><button class="action" data-member-panel-jump="studio">${p.designerEnabled?'Open product studio':'Designer not included'}</button></div></div>`;
 $('#member-page').innerHTML=`<div class="head"><div><h1>Page setup.</h1><p class="sub">One uniform page structure, filled with your identity, links, products and daily message.</p></div></div><form id="pageForm" class="card formGrid"><div class="field"><label>Store name</label><input name="name" value="${esc(p.name)}" required></div><div class="field"><label>Page URL slug</label><input name="slug" value="${esc(p.slug)}" required></div><div class="field full"><label>Bio</label><textarea name="bio" required>${esc(p.bio)}</textarea></div><div class="field full"><label>Daily message</label><textarea name="daily" required>${esc(p.daily)}</textarea></div><div class="field"><label>Logo</label><input type="file" name="logo" accept="image/*"></div><div class="field"><label>Account email</label><input type="email" name="email" value="${esc(p.email)}" required></div>${p.links.slice(0,3).map((l,i)=>`<div class="field"><label>Link ${i+1} label</label><input name="link${i}name" value="${esc(l[0])}"></div><div class="field"><label>Link ${i+1} URL</label><input name="link${i}url" value="${esc(l[1])}"></div>`).join('')}<div class="field"><label>Shipping name</label><input name="shipName" value="${esc(p.shipping.name)}" required></div><div class="field"><label>Street address</label><input name="address1" value="${esc(p.shipping.address1)}" required></div><div class="field"><label>City</label><input name="city" value="${esc(p.shipping.city)}" required></div><div class="field"><label>State</label><input name="region" value="${esc(p.shipping.region)}" required></div><div class="field"><label>ZIP</label><input name="postal" value="${esc(p.shipping.postal)}" required></div><div class="full"><button class="action lime">Save page and regenerate QR</button></div></form>`;
 $('#member-products').innerHTML=`<div class="head"><div><h1>Products and markup.</h1><p class="sub">MadeDeck controls the base. You control the amount added above it. Physical checkout remains separate from service credits.</p></div></div><div class="card" id="merchantPricing">${p.products.map(i=>priceRow(i,p)).join('')}</div>`;
-$('#member-studio').innerHTML=`<div class="head"><div><h1>Private product studio.</h1><p class="sub">This editor is never rendered on the public storefront. Logged-in designs are tied to this member and any incomplete pricing goes to Control Room urgent review.</p></div><button class="pill" id="logTestDesign">Log test design</button></div>${p.designerEnabled?'<iframe class="editorFrame" src="text.html" title="MadeDeck product studio"></iframe>':'<div class="notice">This plan does not include a self-service designer. A real person can prepare products through support.</div>'}`;
+$('#member-studio').innerHTML=`<div class="head"><div><h1>Private product studio.</h1><p class="sub">This editor is never rendered on the public storefront. Logged-in designs are tied to this member and any incomplete pricing goes to Control Room urgent review.</p></div><button class="pill" id="logTestDesign">Log test design</button></div>${p.designerEnabled?'<iframe class="editorFrame" src="/?embed=maker&amp;surface=merchant" title="MadeDeck product studio"></iframe>':'<div class="notice">This plan does not include a self-service designer. A real person can prepare products through support.</div>'}`;
 $('#member-inbox').innerHTML=`<div class="head"><div><h1>Delivery inbox.</h1><p class="sub">Files highlight lime after 24 hours and disappear from the active inbox after 48 hours.</p></div></div>${deliveries.length?deliveries.map(deliveryCard).join(''):'<div class="inboxEmpty">No active deliveries.</div>'}`;
 $('#member-receipts').innerHTML=`<div class="head"><div><h1>Your receipts.</h1><p class="sub">Physical orders and subscriber activity associated with this page.</p></div></div>${receiptTable(receipts)}`;
 bindMember(p)}
@@ -89,7 +89,7 @@ const api={version:'1.1.0',mount(target,options={}){const host=typeof target==='
 </script>
 <script>
 (()=>{
-  const canonical='/text.html?v=0.9.1';
+  const canonical='/?embed=maker&surface=merchant';
   function bind(){document.querySelectorAll('iframe.editorFrame').forEach(frame=>{if(frame.getAttribute('src')!==canonical)frame.setAttribute('src',canonical)})}
   new MutationObserver(bind).observe(document.body,{childList:true,subtree:true});bind();
 })();
@@ -121,6 +121,22 @@ const api={version:'1.1.0',mount(target,options={}){const host=typeof target==='
   window.addEventListener('message',e=>{const d=e.data||{};if(d.source!=='madedeck-parent'||d.type!=='configure')return;const s=d.payload?.session;if(!valid(s))return;if(location.protocol!=='file:'&&e.origin!==location.origin)return;persist(s);harden();if(new URLSearchParams(location.search).get('embed')==='1'&&new URLSearchParams(location.search).get('profile')!==s.profileId){const u=new URL(location.href);u.searchParams.set('profile',s.profileId);location.replace(u)}});
   harden();
   window.MadeDeckMemberBridge=Object.freeze({version:'1.0.0',session:()=>scopedSession?JSON.parse(JSON.stringify(scopedSession)):null,canUseProfile});
+})();
+</script>
+
+<style>
+body:not([data-auth-role="super"]):not([data-auth-role="operator"]) #profileSelect,
+body:not([data-auth-role="super"]):not([data-auth-role="operator"]) #resetDemo,
+body:not([data-auth-role="super"]):not([data-auth-role="operator"]) [data-view="store"],
+body:not([data-auth-role="super"]):not([data-auth-role="operator"]) [data-view="control"],
+body:not([data-auth-role="super"]):not([data-auth-role="operator"]) [data-member-panel]:not([data-member-panel="studio"]){display:none!important}
+</style>
+<script>
+(()=>{
+  const role=document.body.dataset.authRole||'guest';
+  if(role==='super'||role==='operator')return;
+  const studio=document.querySelector('[data-member-panel="studio"]');
+  if(studio&&!studio.classList.contains('active'))studio.click();
 })();
 </script>
 </body>
