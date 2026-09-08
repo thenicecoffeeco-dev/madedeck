@@ -17,7 +17,7 @@ const {createWorkspaceRouter}=require('./workspace-routes');
 const {createOperationsRouter}=require('./operations-routes');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.11.2';
+const APP_VERSION='0.11.3';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -237,9 +237,15 @@ app.get('/api/v1/account/context',tenantAccess.resolve,tenantAccess.authenticate
     res.json({ok:true,request_id:req.requestId,account:{id:c.accountId,key:c.accountKey,store_id:c.storeId,profile_key:c.profileKey},actor:{user_id:c.userId,role:c.role}});
   });
 const checkoutCatalog=Object.freeze({
-  tee:{name:'Essential Tee',base:1800},hoodie:{name:'Heavy Hoodie',base:2600},
-  polo:{name:'Studio Polo',base:2900},sticker:{name:'Custom Sticker',base:600},
-  koozie:{name:'Cold Keeper',base:1200}
+  tee:{name:'Unisex Standard Tee',base:1800},
+  hoodie:{name:'Pullover Hoodie',base:2600},
+  polo:{name:'Performance Polo',base:2900},
+  hat:{name:'Premium Snapback',base:2700},
+  koozie:{name:'Foam Koozie',base:550},
+  towel:{name:'Golf Towel',base:3000},
+  sticker2:{name:'2×2 Square Stickers · 200 pack',base:4500},
+  sticker3:{name:'3×3 Square Stickers · 200 pack',base:5500},
+  label54:{name:'5×4 Labels · 200 pack',base:7000}
 });
 function checkoutUnitAmount(item){
   const product=checkoutCatalog[String(item.productId||'')];if(!product)return null;
