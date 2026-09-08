@@ -89,13 +89,6 @@ const api={version:'1.1.0',mount(target,options={}){const host=typeof target==='
 </script>
 <script>
 (()=>{
-  const canonical='/?embed=maker&surface=merchant';
-  function bind(){document.querySelectorAll('iframe.editorFrame').forEach(frame=>{if(frame.getAttribute('src')!==canonical)frame.setAttribute('src',canonical)})}
-  new MutationObserver(bind).observe(document.body,{childList:true,subtree:true});bind();
-})();
-</script>
-<script>
-(()=>{
   const zoom=document.createElement('div');zoom.className='mockupZoom';zoom.setAttribute('role','dialog');zoom.setAttribute('aria-modal','true');zoom.innerHTML='<div class="mockupZoomCard"><img alt="Expanded product mockup"><div class="mockupZoomBar"><span></span><button class="mockupZoomClose" type="button">Close ×</button></div></div>';document.body.appendChild(zoom);
   const image=zoom.querySelector('img'),title=zoom.querySelector('.mockupZoomBar span');
   function close(){zoom.classList.remove('open');image.removeAttribute('src')}

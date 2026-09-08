@@ -18,7 +18,7 @@ const {createOperationsRouter}=require('./operations-routes');
 const {createStorefrontRouter}=require('./storefront-routes');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.11.7';
+const APP_VERSION='0.11.8';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -271,7 +271,7 @@ app.post('/api/auth/register',async(req,res)=>{
     const token=crypto.randomBytes(32).toString('hex'),sessionKey=crypto.randomUUID();
     const scoped={id:userId,email,role:'merchant_admin',session_key:sessionKey,account_id:accountId,account_key:accountKey,account_type:'merchant',store_id:null,profile_key:accountKey,acting_role:'creator',permissions_json:null,subscription_json:null};
     sessions.set(token,scoped);
-    await db().execute(`INSERT INTO auth_sessions(session_key,user_id,token_hash,account_id,membership_id,store_id,profile_key,acting_role,permissions_json,subscription_json,user_agent,ip_hash,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,DATE_ADD(NOW(),INTERVAL 12 HOUR))`,[sessionKey,userId,sessionHash(token),accountId,Number(membershipResult.insertId),null,accountKey,'merchant',null,null,String(req.headers['user-agent']||'').slice(0,500),sessionHash(req.ip||'')]);
+    await db().execute(`INSERT INTO auth_sessions(session_key,user_id,token_hash,account_id,membership_id,store_id,profile_key,acting_role,permissions_json,subscription_json,user_agent,ip_hash,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,DATE_ADD(NOW(),INTERVAL 12 HOUR))`,[sessionKey,userId,sessionHash(token),accountId,Number(membershipResult.insertId),null,accountKey,'creator',null,null,String(req.headers['user-agent']||'').slice(0,500),sessionHash(req.ip||'')]);
     res.cookie('md_session',token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',maxAge:1000*60*60*12});
     res.status(201).json({ok:true,user:{id:userId,email,role:'merchant_admin',account_id:accountId,account_key:accountKey,acting_role:'creator'},redirect:'/member-account.html?module=member-workspace&onboarding=1'});
   }catch(error){
@@ -371,6 +371,16 @@ app.post('/api/offers',tenantAccess.resolve,tenantAccess.authenticated,tenantAcc
     res.status(201).json({ok:true,id:r.insertId});
   });
 app.get('/api/platform/features',requireUser,requirePlatformAdmin,async(req,res)=>{const [rows]=await db().query('SELECT * FROM feature_flags ORDER BY feature_key');res.json({ok:true,features:rows});});
+app.get('/api/platform/accounts',requireUser,requirePlatformAdmin,async(req,res,next)=>{try{
+  const [rows]=await db().query(`SELECT a.id,a.account_key,a.account_type,a.name,a.status,a.metadata_json,
+    u.email owner_email,u.name owner_name,
+    (SELECT COUNT(*) FROM account_memberships m WHERE m.account_id=a.id AND m.status='active') member_count,
+    (SELECT COUNT(*) FROM tenant_saved_products p WHERE p.account_id=a.id) product_count
+    FROM accounts a LEFT JOIN tenant_identities ti ON ti.account_id=a.id
+    LEFT JOIN users u ON u.id=ti.owner_user_id ORDER BY a.id DESC LIMIT 500`);
+  const accounts=rows.map(row=>{let metadata={};try{metadata=typeof row.metadata_json==='string'?JSON.parse(row.metadata_json):(row.metadata_json||{})}catch{}const store=metadata.store||{};return{id:row.id,account_key:row.account_key,account_type:row.account_type,name:store.name||row.name,status:row.status,owner_email:row.owner_email||'',owner_name:row.owner_name||'',plan_key:metadata.plan_key||'unassigned',product_limit:Number(metadata.product_limit||0),product_count:Number(row.product_count||0),member_count:Number(row.member_count||0),onboarding_complete:!!store.onboarding_complete,storefront_published:!!store.storefront_published};});
+  res.json({ok:true,accounts});
+}catch(error){next(error)}});
 app.get('/api/platform/monetization',requireUser,requirePlatformAdmin,async(req,res)=>{
   const [[plans],[modules],[subscriptions],[inquiries],[wallets],[orders]]=await Promise.all([
     db().query('SELECT * FROM platform_plans ORDER BY sort_order,name'),
