@@ -32,8 +32,8 @@ const colorFilters={
 };
 
 function showPage(name){$$('.page').forEach(p=>p.classList.toggle('active',p.id===`page-${name}`));$$('.main-nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===name));scrollTo({top:0,behavior:'smooth'});}$$('[data-page]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();showPage(b.dataset.page)}));
-$('#jumpDesigner')?.addEventListener('click',()=>window.MadeDeckPublicMakerLaunch?.('tee'));
-$('[data-open-product]').forEach(c=>{const launch=()=>window.MadeDeckPublicMakerLaunch?window.MadeDeckPublicMakerLaunch(c.dataset.openProduct):location.assign('/text.html?mode=public&product='+encodeURIComponent(c.dataset.openProduct));c.addEventListener('click',launch);c.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();launch()}})});
+$('#jumpDesigner')?.addEventListener('click',()=>$('#designer')?.scrollIntoView({behavior:'smooth'}));
+$$('[data-open-product]').forEach(c=>c.addEventListener('click',()=>{if($('#productSelect option[value="'+c.dataset.openProduct+'"]')){$('#productSelect').value=c.dataset.openProduct;syncProduct();}$('#designer')?.scrollIntoView({behavior:'smooth'})}));
 function showStep(name){$$('.step').forEach(b=>b.classList.toggle('active',b.dataset.step===name));$$('.control-view').forEach(v=>v.classList.toggle('active',v.dataset.control===name));}$$('[data-step]').forEach(b=>b.addEventListener('click',()=>showStep(b.dataset.step)));$$('[data-next]').forEach(b=>b.addEventListener('click',()=>showStep(b.dataset.next)));
 
 const mockupImg=$('#mockupImg'),legacyArt=$('#artwork'),printZone=$('#printZone'),pSelect=$('#productSelect'),cSelect=$('#colorSelect'),placeSelect=$('#placementSelect'),basePrice=$('#basePrice'),stage=$('#mockupStage');
@@ -205,22 +205,3 @@ document.addEventListener('click',async e=>{const plan=e.target.closest('[data-s
 document.addEventListener('change',async e=>{if(!e.target.matches('[data-inquiry]'))return;try{await moneyRequest(`/api/platform/inquiries/${e.target.dataset.inquiry}`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({status:e.target.value})});$('#moneyMsg').textContent='Inquiry status saved.';loadMonetization()}catch(err){$('#moneyMsg').textContent=`Could not save: ${err.message}`}});
 
 syncProduct();
-
-/* Canonical public Maker mount: legacy controls initialize for recovery compatibility, then leave the displayed pathway. */
-(function mountCanonicalPublicMaker(){
-  const host=document.querySelector('#designer .designer');
-  if(!host)return;
-  const frame=document.createElement('iframe');
-  frame.className='canonical-maker-frame';
-  frame.title='MadeDeck Maker';
-  frame.style.cssText='display:block;width:100%;min-height:880px;border:1px solid #dfe3e8;border-radius:18px;background:#f4f2eb';
-  frame.src='/text.html?mode=public&product=tee';
-  host.replaceWith(frame);
-  window.MadeDeckPublicMakerLaunch=product=>{
-    const allowed=['tee','hoodie','polo','koozie','sticker'];
-    const selected=allowed.includes(product)?product:'tee';
-    const target='/text.html?mode=public&product='+encodeURIComponent(selected);
-    if(!frame.src.endsWith(target))frame.src=target;
-    document.querySelector('#designer')?.scrollIntoView({behavior:'smooth',block:'start'});
-  };
-})();
