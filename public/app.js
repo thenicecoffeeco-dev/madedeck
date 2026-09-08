@@ -4,7 +4,7 @@ let offerType='store';
 
 const productData={
   tee:{name:'Unisex Standard Tee',price:18,type:'apparel',colors:['White','Black','Red','Pink','Gray','Heather Gray','Sky Blue','Dark Blue','Green','Yellow'],views:['front','back','chest','lsleeve','rsleeve'],sizes:true,locations:{front:{label:'Front design',cost:0},chest:{label:'Breast / chest',cost:6},back:{label:'Back design',cost:6},lsleeve:{label:'Left sleeve',cost:6},rsleeve:{label:'Right sleeve',cost:6},frontText:{label:'Front text',cost:0,text:true},backText:{label:'Back text',cost:6,text:true}}},
-  hoodie:{name:'Pullover Hoodie',price:37,type:'apparel',colors:['Black','White','Gray','Red'],views:['front','back','chest','lsleeve','rsleeve'],sizes:true,locations:{front:{label:'Front design',cost:0},chest:{label:'Breast / chest',cost:6},back:{label:'Back design',cost:6},lsleeve:{label:'Left sleeve',cost:6},rsleeve:{label:'Right sleeve',cost:6},frontText:{label:'Front text',cost:0,text:true},backText:{label:'Back text',cost:6,text:true}}},
+  hoodie:{name:'Pullover Hoodie',price:26,type:'apparel',colors:['Black','White','Gray','Red'],views:['front','back','chest','lsleeve','rsleeve'],sizes:true,locations:{front:{label:'Front design',cost:0},chest:{label:'Breast / chest',cost:6},back:{label:'Back design',cost:6},lsleeve:{label:'Left sleeve',cost:6},rsleeve:{label:'Right sleeve',cost:6},frontText:{label:'Front text',cost:0,text:true},backText:{label:'Back text',cost:6,text:true}}},
   polo:{name:'Performance Polo',price:29,type:'apparel',colors:['White','Black','Gray','Dark Blue','Red'],views:['lchest','rchest','neck','lsleeve','rsleeve'],sizes:true,locations:{lchest:{label:'Left breast embroidery',cost:6.45},rchest:{label:'Right breast embroidery',cost:6.45},neck:{label:'Center neck embroidery',cost:6.45},lsleeve:{label:'Left sleeve embroidery',cost:6.45},rsleeve:{label:'Right sleeve embroidery',cost:6.45}}},
   hat:{name:'Premium Snapback',price:27,type:'fixed',colors:['Black','White','Gray','Red'],views:['front'],sizes:false,locations:{front:{label:'Front decoration',cost:0}}},
   koozie:{name:'Foam Koozie',price:5.5,type:'fixed',colors:['Red','Black','White','Gray','Sky Blue','Dark Blue','Pink','Green','Yellow'],views:['front'],sizes:false,locations:{front:{label:'Printable panel',cost:0}}},
@@ -84,6 +84,14 @@ $('.size-grid')?.addEventListener('input',()=>{updateTotals();renderProductionPr
 function buildProductionPayload(){const p=pricing();return {version:'0.4.0',product:{key:pSelect.value,name:pdef().name,color:state.color},pricing:p,decorations:Object.entries(pdef().locations).filter(([id])=>state.enabled.has(id)).map(([id,cfg])=>{const l=state.layers[id]||{};return {location:id,label:cfg.label,charge:cfg.cost||0,source:{kind:l.kind||cfg.text?'text':'upload',name:l.sourceName||null,fullResolution:!!l.file||l.kind==='premade'},placement:{x:l.x??null,y:l.y??null,width:l.w??null,height:l.h??null,flip:!!l.flip,invert:!!l.invert},text:l.text||null,textStyle:l.style||null}})}}
 function buildProductionFormData(payload=buildProductionPayload()){const fd=new FormData();fd.append('configuration',new Blob([JSON.stringify(payload)],{type:'application/json'}),'configuration.json');Object.entries(state.layers).forEach(([id,l])=>{if(l.file)fd.append(`artwork_${id}`,l.file,l.file.name)});return fd}
 window.mdBuildProductionPayload=buildProductionPayload;window.mdBuildProductionFormData=buildProductionFormData;
+window.mdCheckoutItems=()=>state.cart.flatMap(({payload})=>{
+  const surfaces=Object.fromEntries((payload.decorations||[]).map(decoration=>[decoration.location,[decoration]]));
+  const method=payload.product.key==='polo'?'Embroidery':'DTG';
+  if(!productData[payload.product.key]?.sizes)return [{productId:payload.product.key,variant:'',quantity:Math.max(1,Number(payload.pricing.qty)||1),method,surfaces}];
+  const sizeNames=['S','M','L','XL','2X','3X'],inputs=$('.size-grid input');
+  const sized=sizeNames.map((variant,index)=>({productId:payload.product.key,variant,quantity:Math.max(0,Number(inputs[index]?.value)||0),method,surfaces})).filter(item=>item.quantity>0);
+  return sized.length?sized:[{productId:payload.product.key,variant:'S',quantity:1,method,surfaces}];
+});
 let prodPreview;
 function renderProductionPreview(){const order=$('.control-view[data-control="order"]');if(!order)return;if(!prodPreview){prodPreview=document.createElement('pre');prodPreview.className='production-summary';prodPreview.id='productionSummary';order.appendChild(prodPreview)}prodPreview.textContent=JSON.stringify(buildProductionPayload(),null,2)}
 
