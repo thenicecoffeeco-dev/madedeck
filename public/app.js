@@ -88,7 +88,7 @@ window.mdCheckoutItems=()=>state.cart.flatMap(({payload})=>{
   const surfaces=Object.fromEntries((payload.decorations||[]).map(decoration=>[decoration.location,[decoration]]));
   const method=payload.product.key==='polo'?'Embroidery':'DTG';
   if(!productData[payload.product.key]?.sizes)return [{productId:payload.product.key,variant:'',quantity:Math.max(1,Number(payload.pricing.qty)||1),method,surfaces}];
-  const sizeNames=['S','M','L','XL','2X','3X'],inputs=$('.size-grid input');
+  const sizeNames=['S','M','L','XL','2X','3X'],inputs=[...document.querySelectorAll('.size-grid input')];
   const sized=sizeNames.map((variant,index)=>({productId:payload.product.key,variant,quantity:Math.max(0,Number(inputs[index]?.value)||0),method,surfaces})).filter(item=>item.quantity>0);
   return sized.length?sized:[{productId:payload.product.key,variant:'S',quantity:1,method,surfaces}];
 });
