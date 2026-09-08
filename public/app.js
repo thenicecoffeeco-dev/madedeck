@@ -33,7 +33,7 @@ const colorFilters={
 
 function showPage(name){$$('.page').forEach(p=>p.classList.toggle('active',p.id===`page-${name}`));$$('.main-nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===name));scrollTo({top:0,behavior:'smooth'});}$$('[data-page]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();showPage(b.dataset.page)}));
 $('#jumpDesigner')?.addEventListener('click',()=>$('#designer')?.scrollIntoView({behavior:'smooth'}));
-$$('[data-open-product]').forEach(c=>c.addEventListener('click',()=>{if($('#productSelect option[value="'+c.dataset.openProduct+'"]')){$('#productSelect').value=c.dataset.openProduct;syncProduct();}$('#designer')?.scrollIntoView({behavior:'smooth'})}));
+$('[data-open-product]').forEach(c=>{const launch=()=>{location.href='/text.html?mode=public&product='+encodeURIComponent(c.dataset.openProduct)};c.addEventListener('click',launch);c.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();launch()}})});
 function showStep(name){$$('.step').forEach(b=>b.classList.toggle('active',b.dataset.step===name));$$('.control-view').forEach(v=>v.classList.toggle('active',v.dataset.control===name));}$$('[data-step]').forEach(b=>b.addEventListener('click',()=>showStep(b.dataset.step)));$$('[data-next]').forEach(b=>b.addEventListener('click',()=>showStep(b.dataset.next)));
 
 const mockupImg=$('#mockupImg'),legacyArt=$('#artwork'),printZone=$('#printZone'),pSelect=$('#productSelect'),cSelect=$('#colorSelect'),placeSelect=$('#placementSelect'),basePrice=$('#basePrice'),stage=$('#mockupStage');
