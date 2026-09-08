@@ -105,6 +105,48 @@ function createWorkspaceRouter({db,access}){
     }catch(error){next(error)}
   });
 
+  router.put('/maker/:key',...guard,async(req,res,next)=>{
+    const connection=await db().getConnection();
+    try{
+      const key=cleanKey(req.params.key),body=req.body||{},product=body.product,design=body.design;
+      const name=cleanText(body.name||product?.product?.name||'Untitled product',160);
+      const price=Number(body.retail_price??product?.pricing?.unit??0);
+      if(!key||!product||typeof product!=='object'||!design||typeof design!=='object'||!Number.isFinite(price)||price<0){
+        return res.status(400).json({ok:false,error:'invalid_maker_product',request_id:req.requestId});
+      }
+      const baseProduct=cleanText(body.base_product||product?.product?.key||'tee',60)||'tee';
+      await connection.beginTransaction();
+      const [existing]=await connection.execute('SELECT product_key FROM tenant_saved_products WHERE account_id=? AND product_key=? LIMIT 1',[req.authContext.accountId,key]);
+      if(!existing[0]&&req.authContext.role!=='super'){
+        const [accountRows]=await connection.execute('SELECT metadata_json FROM accounts WHERE id=? LIMIT 1',[req.authContext.accountId]);
+        const [countRows]=await connection.execute('SELECT COUNT(*) AS total FROM tenant_saved_products WHERE account_id=?',[req.authContext.accountId]);
+        const metadata=parseJson(accountRows[0]?.metadata_json)||{},limit=Math.max(1,Number(metadata.product_limit||3));
+        if(Number(countRows[0]?.total||0)>=limit){
+          await connection.rollback();
+          return res.status(409).json({ok:false,error:'free_product_limit_reached',limit,request_id:req.requestId});
+        }
+      }
+      await connection.execute(
+        `INSERT INTO tenant_saved_products(product_key,account_id,store_id,owner_user_id,catalog_product_id,name,status,retail_price,product_json)
+         VALUES(?,?,?,?,NULL,?,'draft',?,?)
+         ON DUPLICATE KEY UPDATE store_id=VALUES(store_id),owner_user_id=VALUES(owner_user_id),name=VALUES(name),
+          status='draft',retail_price=VALUES(retail_price),product_json=VALUES(product_json)`,
+        [key,req.authContext.accountId,req.authContext.storeId,req.authContext.userId,name,price,cleanJson(product)]);
+      await connection.execute(
+        `INSERT INTO tenant_designs(design_key,account_id,store_id,owner_user_id,name,product_key,status,schema_version,design_json)
+         VALUES(?,?,?,?,?,?,'draft',7,?)
+         ON DUPLICATE KEY UPDATE store_id=VALUES(store_id),owner_user_id=VALUES(owner_user_id),name=VALUES(name),
+          product_key=VALUES(product_key),status='draft',schema_version=7,design_json=VALUES(design_json)`,
+        [key,req.authContext.accountId,req.authContext.storeId,req.authContext.userId,name,baseProduct,cleanJson(design)]);
+      await connection.commit();
+      res.json({ok:true,product_key:key,design_key:key});
+    }catch(error){
+      try{await connection.rollback()}catch{}
+      if(error.message==='payload_too_large')return res.status(413).json({ok:false,error:error.message,request_id:req.requestId});
+      next(error);
+    }finally{connection.release()}
+  });
+
   router.put('/products/:key',...guard,async(req,res,next)=>{
     try{
       const key=cleanKey(req.params.key),body=req.body||{},name=String(body.name||body.product?.name||'Untitled product').trim().slice(0,160),price=Number(body.retail_price??body.product?.retail_price??0);
