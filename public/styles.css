@@ -18,3 +18,17 @@ html[data-contrast^="high-"] :is(.mockup-stage,#mockupStage,#mockupImg,#artwork,
 html.md-reduced-motion *,html.md-reduced-motion *::before,html.md-reduced-motion *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 @media(forced-colors:active){.md-gear,.md-preferences-panel,.md-preferences-grid input,.md-preferences-grid select{forced-color-adjust:auto}}
 @media(max-width:720px){.md-preferences-grid{grid-template-columns:1fr}.md-gear{margin-left:auto}}
+
+/* Canonical Maker embed: same public engine, isolated workspace surface. */
+body.maker-embed{background:#fff}
+body.maker-embed .site-header,
+body.maker-embed #page-home>div.hero,
+body.maker-embed #page-home>section.shell,
+body.maker-embed #page-home>.sticker-strip,
+body.maker-embed .page:not(#page-home){display:none!important}
+body.maker-embed #page-home{display:block!important}
+body.maker-embed #designer{display:block!important;padding:0}
+body.maker-embed #designer>.shell{max-width:none;padding:0}
+body.maker-embed #designer .designer-title{display:none}
+body.maker-embed .designer{border-radius:0;min-height:760px}
+body.maker-embed .md-cart-fab{right:18px;bottom:18px}
