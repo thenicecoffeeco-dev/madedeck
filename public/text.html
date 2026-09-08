@@ -61,7 +61,30 @@ const pricingController={schema:1,configure(input={},options={}){return applyPri
 const key=()=>state.product+'|'+state.part;const layers=()=>state.surfaces[key()]||(state.surfaces[key()]=[]);const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);const escapeHTML=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 function snapshot(){const clean={...state,selected:null};return JSON.stringify(clean)}
 function safeStore(){try{const next=snapshot(),old=localStorage.getItem('madedeck-widget-v2');if(old)localStorage.setItem('madedeck-widget-backup',old);localStorage.setItem('madedeck-widget-v2',next);sessionStorage.setItem('madedeck-widget-session',next);$('#saveStatus').textContent='Draft saved locally';return true}catch(e){$('#saveStatus').textContent='Session safe · storage full';return false}}
-function save(){safeStore();toast('Draft saved ✓')}
+async function save(){
+  safeStore();
+  const designKey=state.activeDesignId||uid();
+  state.activeDesignId=designKey;
+  const productName=products[state.product]?.name||'MadeDeck';
+  const enteredName=$('#designName')?.value?.trim();
+  const name=(enteredName||productName+' draft').slice(0,120);
+  try{
+    const response=await fetch('/api/workspace/designs/'+encodeURIComponent(designKey),{
+      method:'PUT',
+      credentials:'same-origin',
+      headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify({name,product_key:state.product,schema_version:7,design:canonicalPayload({savedAt:new Date().toISOString()})})
+    });
+    const type=response.headers.get('content-type')||'';
+    const result=type.includes('application/json')?await response.json():{ok:false,error:'workspace_api_unavailable'};
+    if(!response.ok||!result.ok)throw Error(result.error||'save_failed');
+    safeStore();
+    toast('Draft saved to your account ✓');
+  }catch(error){
+    console.warn('MadeDeck account draft sync deferred',error.message);
+    toast('Draft saved locally · account sync pending');
+  }
+}
 function validState(s){return s&&typeof s==='object'&&products[s.product]&&s.surfaces&&typeof s.surfaces==='object'&&Array.isArray(s.cart)}
 function load(){let recovered=false;for(const k of ['madedeck-widget-v2','madedeck-widget-backup','madedeck-widget-session','madedeck-widget-v1']){try{const raw=(k.includes('session')?sessionStorage:localStorage).getItem(k);if(!raw)continue;const s=JSON.parse(raw);if(validState(s)){state={...state,...s,schema:5,mockups:s.mockups||{},mockupSelections:s.mockupSelections||{},designVersions:s.designVersions||[],selected:null};recovered=k!=='madedeck-widget-v2';break}}catch(e){recovered=true}}if(recovered)setTimeout(()=>$('#recovery').classList.add('show'),0)}
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');setTimeout(()=>$('#toast').classList.remove('show'),1800)}
