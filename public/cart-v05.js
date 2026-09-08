@@ -90,15 +90,20 @@
     const status=$('#mdCheckoutStatus',cart);
     status.textContent='Preparing checkout route…';
     try{
+      if(provider==='stripe'&&providerStatus.stripe){
+        const items=typeof window.mdCheckoutItems==='function'?window.mdCheckoutItems():[];
+        if(!items.length)throw new Error('Add a configured product to the cart first.');
+        const r=await fetch('/api/checkout/session',{method:'POST',headers:{'content-type':'application/json','accept':'application/json'},credentials:'same-origin',body:JSON.stringify({items})});
+        const type=r.headers.get('content-type')||'',j=type.includes('application/json')?await r.json():{ok:false,error:`checkout_http_${r.status}`};
+        if(r.status===401||j.error==='login_required'){status.textContent='Sign in to attach this cart to your account before payment.';if(typeof window.showPage==='function')window.showPage('login');return}
+        if(!r.ok||!j.ok||!j.url)throw new Error(j.error||'stripe_checkout_failed');
+        status.textContent='Opening secure Stripe Checkout…';window.location.assign(j.url);return;
+      }
       const r=await fetch('/api/checkout/preview',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',body:JSON.stringify({subtotal,shipping,provider})});
       const j=await r.json();
       if(!j.ok)throw new Error(j.error||'checkout_preview_failed');
-      if(j.economics){
-        $('#mdPlatformFee',cart).textContent=money(j.economics.platform_fee);
-        $('#mdMerchantPayout',cart).textContent=money(j.economics.merchant_payout);
-        $('#mdOrderOwner',cart).textContent=j.economics.order_owner||'Merchant';
-      }
-      status.textContent=j.provider_enabled?`${providerLabel(provider)} is ready for live handoff.`:`${providerLabel(provider)} route is prepared; add credentials in server secrets to activate payment.`;
+      if(j.economics){$('#mdPlatformFee',cart).textContent=money(j.economics.platform_fee);$('#mdMerchantPayout',cart).textContent=money(j.economics.merchant_payout);$('#mdOrderOwner',cart).textContent=j.economics.order_owner||'Merchant'}
+      status.textContent=j.provider_enabled?`${providerLabel(provider)} is connected; this provider adapter is next in the checkout queue.`:`${providerLabel(provider)} is not configured for this account.`;
     }catch(e){status.textContent='Checkout preview could not be prepared. '+e.message;}
   }
 
