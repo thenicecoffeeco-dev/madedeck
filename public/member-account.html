@@ -123,5 +123,21 @@ const api={version:'1.1.0',mount(target,options={}){const host=typeof target==='
   window.MadeDeckMemberBridge=Object.freeze({version:'1.0.0',session:()=>scopedSession?JSON.parse(JSON.stringify(scopedSession)):null,canUseProfile});
 })();
 </script>
+
+<style>
+body:not([data-auth-role="super"]):not([data-auth-role="operator"]) #profileSelect,
+body:not([data-auth-role="super"]):not([data-auth-role="operator"]) #resetDemo,
+body:not([data-auth-role="super"]):not([data-auth-role="operator"]) [data-view="store"],
+body:not([data-auth-role="super"]):not([data-auth-role="operator"]) [data-view="control"],
+body:not([data-auth-role="super"]):not([data-auth-role="operator"]) [data-member-panel]:not([data-member-panel="studio"]){display:none!important}
+</style>
+<script>
+(()=>{
+  const role=document.body.dataset.authRole||'guest';
+  if(role==='super'||role==='operator')return;
+  const studio=document.querySelector('[data-member-panel="studio"]');
+  if(studio&&!studio.classList.contains('active'))studio.click();
+})();
+</script>
 </body>
 </html>
