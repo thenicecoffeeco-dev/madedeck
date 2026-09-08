@@ -24,6 +24,9 @@
       .md-cart-v05-econ>div{display:flex;justify-content:space-between;gap:12px;margin:5px 0}
       .md-cart-v05-checkout{width:100%;padding:12px;border:0;border-radius:10px;background:#111827;color:#fff;font-weight:900;cursor:pointer;margin-top:10px}
       .md-cart-v05-status{font-size:10px;color:#667085;margin-top:7px;line-height:1.4}
+      .md-cart{overflow-y:auto!important;overscroll-behavior:contain}
+      .md-cart-foot{position:sticky;bottom:0;z-index:3;border-top:1px solid #eceff3;box-shadow:0 -10px 24px rgba(15,23,42,.08)}
+      .md-cart-v05-checkout{min-height:46px}
     `;
     document.head.appendChild(s);
   }
