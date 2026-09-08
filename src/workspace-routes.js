@@ -42,7 +42,9 @@ function createWorkspaceRouter({db,access}){
       const [rows]=await db().execute('SELECT metadata_json FROM accounts WHERE id=? LIMIT 1',[req.authContext.accountId]);
       const metadata=parseJson(rows[0]?.metadata_json)||{},previous=metadata.store||{};
       metadata.plan_key=metadata.plan_key||'free';metadata.product_limit=Math.max(1,Number(metadata.product_limit||3));
-      metadata.store={...previous,display_name:displayName,name,slug,bio:cleanText(body.bio,1200),daily_message:cleanText(body.daily_message,500),logo_data:logo||previous.logo_data||'',links,onboarding_complete:true,storefront_published:body.storefront_published===true||previous.storefront_published===true,updated_at:new Date().toISOString()};
+      let publishedKeys=Array.isArray(previous.published_product_keys)?previous.published_product_keys:[];
+      if(body.storefront_published===true){const [published]=await db().execute('SELECT product_key FROM tenant_saved_products WHERE account_id=? ORDER BY updated_at DESC LIMIT ?',[req.authContext.accountId,metadata.product_limit]);publishedKeys=published.map(row=>row.product_key);if(!publishedKeys.length)return res.status(409).json({ok:false,error:'create_a_product_before_publishing',request_id:req.requestId})}
+      metadata.store={...previous,display_name:displayName,name,slug,bio:cleanText(body.bio,1200),daily_message:cleanText(body.daily_message,500),logo_data:logo||previous.logo_data||'',links,onboarding_complete:true,storefront_published:body.storefront_published===true||previous.storefront_published===true,published_product_keys:publishedKeys,updated_at:new Date().toISOString()};
       await db().execute('UPDATE accounts SET name=?,metadata_json=? WHERE id=?',[name,cleanJson(metadata),req.authContext.accountId]);
       res.json({ok:true,profile:metadata.store,plan_key:metadata.plan_key,product_limit:metadata.product_limit});
     }catch(error){if(error.message==='payload_too_large')return res.status(413).json({ok:false,error:error.message});next(error)}
