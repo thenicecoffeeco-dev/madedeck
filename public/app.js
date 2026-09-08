@@ -1,5 +1,4 @@
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
-const escapeHtml=value=>String(value??'').replace(/[&<>\"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[char]));
 let offerType='store';
 
 const productData={
@@ -32,8 +31,8 @@ const colorFilters={
 };
 
 function showPage(name){$$('.page').forEach(p=>p.classList.toggle('active',p.id===`page-${name}`));$$('.main-nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===name));scrollTo({top:0,behavior:'smooth'});}$$('[data-page]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();showPage(b.dataset.page)}));
-$('#jumpDesigner')?.addEventListener('click',()=>window.MadeDeckPublicMakerLaunch?.('tee'));
-$('[data-open-product]').forEach(c=>{const launch=()=>window.MadeDeckPublicMakerLaunch?window.MadeDeckPublicMakerLaunch(c.dataset.openProduct):location.assign('/text.html?mode=public&product='+encodeURIComponent(c.dataset.openProduct));c.addEventListener('click',launch);c.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();launch()}})});
+$('#jumpDesigner')?.addEventListener('click',()=>$('#designer')?.scrollIntoView({behavior:'smooth'}));
+$$('[data-open-product]').forEach(c=>c.addEventListener('click',()=>{if($('#productSelect option[value="'+c.dataset.openProduct+'"]')){$('#productSelect').value=c.dataset.openProduct;syncProduct();}$('#designer')?.scrollIntoView({behavior:'smooth'})}));
 function showStep(name){$$('.step').forEach(b=>b.classList.toggle('active',b.dataset.step===name));$$('.control-view').forEach(v=>v.classList.toggle('active',v.dataset.control===name));}$$('[data-step]').forEach(b=>b.addEventListener('click',()=>showStep(b.dataset.step)));$$('[data-next]').forEach(b=>b.addEventListener('click',()=>showStep(b.dataset.next)));
 
 const mockupImg=$('#mockupImg'),legacyArt=$('#artwork'),printZone=$('#printZone'),pSelect=$('#productSelect'),cSelect=$('#colorSelect'),placeSelect=$('#placementSelect'),basePrice=$('#basePrice'),stage=$('#mockupStage');
@@ -102,7 +101,7 @@ $('#buyNow')?.addEventListener('click',()=>{const payload=buildProductionPayload
 $('#joinForm')?.addEventListener('submit',async e=>{e.preventDefault();const msg=$('#joinMsg');msg.textContent='Sending…';try{const r=await fetch('/api/inquiries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:$('#joinName').value,company:$('#joinCompany').value,email:$('#joinEmail').value,message:$('#joinInterest').value,source:'merchant-signup'})});const j=await r.json();if(!j.ok)throw new Error(j.error||'Could not send');msg.textContent=`Received — inquiry #${j.id}. It is now visible in the MadeDeck admin console.`;e.target.reset()}catch(err){msg.textContent=`Could not send: ${err.message}`}});
 $('#loginForm')?.addEventListener('submit',async e=>{e.preventDefault();const msg=$('#loginMsg');msg.textContent='Signing in…';try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',body:JSON.stringify({email:$('#loginEmail').value,password:$('#loginPassword').value})});const j=await r.json().catch(()=>({ok:false,error:`server_response_${r.status}`}));if(!r.ok||!j.ok)throw new Error(j.error||`login_failed_${r.status}`);msg.textContent='';showPage('dashboard');loadOffers();loadSavedProducts();configureDashboard(j.user)}catch(err){msg.textContent=`Login failed: ${err.message}`;}});
 $('#logoutBtn')?.addEventListener('click',async()=>{await fetch('/api/auth/logout',{method:'POST'});showPage('home')});
-async function loadSavedProducts(){try{const response=await fetch('/api/workspace/products',{credentials:'same-origin',headers:{'Accept':'application/json'}}),type=response.headers.get('content-type')||'',payload=type.includes('application/json')?await response.json():{ok:false,error:'workspace_api_unavailable'};if(!response.ok||!payload.ok)return;$('#savedProducts').innerHTML=(payload.products||[]).map(row=>`<div class="saved-row"><span>${escapeHtml(row.name)}<small>${escapeHtml(row.product?.base_product||'Custom product')}</small></span><b>${money(row.retail_price)}</b></div>`).join('')||'<div class="money-empty">No saved products yet.</div>'}catch{}}
+async function loadSavedProducts(){try{const response=await fetch('/api/workspace/products',{credentials:'same-origin'}),payload=await response.json();if(!response.ok)return;$('#savedProducts').innerHTML=(payload.products||[]).map(row=>`<div class="saved-row"><span>${escapeHtml(row.name)}<small>${escapeHtml(row.product?.base_product||'Custom product')}</small></span><b>${money(row.retail_price)}</b></div>`).join('')||'<div class="money-empty">No saved products yet.</div>'}catch{}}
 $('#saveProductBtn')?.addEventListener('click',async()=>{const button=$('#saveProductBtn'),name=$('#dashName').value.trim()||'Untitled product',price=Number($('#dashPrice').value||0),base=$('#dashBase').value;if(!Number.isFinite(price)||price<0)return;button.disabled=true;button.textContent='Saving…';try{const key=(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(16).slice(2)),response=await fetch('/api/workspace/products/'+encodeURIComponent(key),{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({name,retail_price:price,product:{name,retail_price:price,base_product:base,status:'draft'}})}),type=response.headers.get('content-type')||'',payload=type.includes('application/json')?await response.json():{ok:false,error:'workspace_api_unavailable'};if(!response.ok||!payload.ok)throw Error(payload.error||'Request failed');await loadSavedProducts()}catch(error){alert('Could not save product: '+error.message)}finally{button.disabled=false;button.textContent='Save product'}});
 $$('[data-offertype]').forEach(b=>b.addEventListener('click',()=>{offerType=b.dataset.offertype;$$('[data-offertype]').forEach(x=>x.classList.toggle('active',x===b))}));
 async function loadOffers(){try{const r=await fetch('/api/offers');const j=await r.json();if(!j.ok)return;$('#offerCount').textContent=j.offers.filter(o=>o.status==='live').length;$('#offerList').innerHTML=j.offers.length?j.offers.map(o=>`<div class="offer-row"><span><b>${o.title}</b><br><small>${o.type} · ${o.status}</small></span><span>$${Number(o.retail_price).toFixed(2)}</span></div>`).join(''):'No offers yet.'}catch{}}
@@ -122,7 +121,7 @@ async function loadSetting(kind){
     target.innerHTML=(views[kind]||[]).map(([label,value])=>`<div class="money-row"><div class="money-row-main"><b>${escapeHtml(label)}</b></div><span>${escapeHtml(value)}</span></div>`).join('');
   }catch(error){target.innerHTML='<div class="money-empty">Unable to inspect this setting: '+escapeHtml(error.message)+'</div>'}
 }
-$$('[data-setting]').forEach(button=>button.addEventListener('click',()=>loadSetting(button.dataset.setting)));
+$('[data-setting]').forEach(button=>button.addEventListener('click',()=>loadSetting(button.dataset.setting)));
 
 const money=v=>`$${Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 function configureDashboard(user){const admin=user?.role==='platform_admin';$('#adminMonetization').dataset.authorized=admin?'true':'false';$('#adminMonetization').hidden=!admin;if(admin){$('#dashboardEyebrow').textContent='MADEDECK ADMIN';$('#dashboardTitle').textContent='The business, clearly.';$('#dashboardSub').textContent='Pricing, modules, subscribers, inquiries and credits without hunting through five systems.';loadMonetization()}}
@@ -205,22 +204,3 @@ document.addEventListener('click',async e=>{const plan=e.target.closest('[data-s
 document.addEventListener('change',async e=>{if(!e.target.matches('[data-inquiry]'))return;try{await moneyRequest(`/api/platform/inquiries/${e.target.dataset.inquiry}`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({status:e.target.value})});$('#moneyMsg').textContent='Inquiry status saved.';loadMonetization()}catch(err){$('#moneyMsg').textContent=`Could not save: ${err.message}`}});
 
 syncProduct();
-
-/* Canonical public Maker mount: legacy controls initialize for recovery compatibility, then leave the displayed pathway. */
-(function mountCanonicalPublicMaker(){
-  const host=document.querySelector('#designer .designer');
-  if(!host)return;
-  const frame=document.createElement('iframe');
-  frame.className='canonical-maker-frame';
-  frame.title='MadeDeck Maker';
-  frame.style.cssText='display:block;width:100%;min-height:880px;border:1px solid #dfe3e8;border-radius:18px;background:#f4f2eb';
-  frame.src='/text.html?mode=public&product=tee';
-  host.replaceWith(frame);
-  window.MadeDeckPublicMakerLaunch=product=>{
-    const allowed=['tee','hoodie','polo','koozie','sticker'];
-    const selected=allowed.includes(product)?product:'tee';
-    const target='/text.html?mode=public&product='+encodeURIComponent(selected);
-    if(!frame.src.endsWith(target))frame.src=target;
-    document.querySelector('#designer')?.scrollIntoView({behavior:'smooth',block:'start'});
-  };
-})();
