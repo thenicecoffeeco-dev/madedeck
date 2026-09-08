@@ -129,14 +129,15 @@ body:not([data-auth-role="super"]):not([data-auth-role="operator"]) #profileSele
 body:not([data-auth-role="super"]):not([data-auth-role="operator"]) #resetDemo,
 body:not([data-auth-role="super"]):not([data-auth-role="operator"]) [data-view="store"],
 body:not([data-auth-role="super"]):not([data-auth-role="operator"]) [data-view="control"],
-body:not([data-auth-role="super"]):not([data-auth-role="operator"]) [data-member-panel]:not([data-member-panel="studio"]){display:none!important}
+body:not([data-auth-role="super"]):not([data-auth-role="operator"]) #view-store,
+body:not([data-auth-role="super"]):not([data-auth-role="operator"]) #view-control{display:none!important}
 </style>
 <script>
 (()=>{
   const role=document.body.dataset.authRole||'guest';
   if(role==='super'||role==='operator')return;
-  const studio=document.querySelector('[data-member-panel="studio"]');
-  if(studio&&!studio.classList.contains('active'))studio.click();
+  try{localStorage.removeItem('madedeck-member-system-v1');localStorage.removeItem('madedeck-member-bridge-v1')}catch{}
+  window.MadeDeckMemberSystem?.switchView('member');
 })();
 </script>
 </body>
