@@ -97,7 +97,7 @@
         const type=r.headers.get('content-type')||'',j=type.includes('application/json')?await r.json():{ok:false,error:`checkout_http_${r.status}`};
         if(r.status===401||j.error==='login_required'){status.textContent='Sign in to attach this cart to your account before payment.';if(typeof window.showPage==='function')window.showPage('login');return}
         if(!r.ok||!j.ok||!j.url)throw new Error(j.error||'stripe_checkout_failed');
-        status.textContent='Opening secure Stripe Checkout…';window.location.assign(j.url);return;
+        status.textContent='Opening secure Stripe Checkout…';const target=window.top&&window.top!==window?window.top:window;target.location.assign(j.url);return;
       }
       const r=await fetch('/api/checkout/preview',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',body:JSON.stringify({subtotal,shipping,provider})});
       const j=await r.json();
