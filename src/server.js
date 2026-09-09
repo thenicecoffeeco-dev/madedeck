@@ -18,7 +18,7 @@ const {createOperationsRouter}=require('./operations-routes');
 const {createStorefrontRouter}=require('./storefront-routes');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.12.0';
+const APP_VERSION='0.12.1';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -288,7 +288,7 @@ async function durableSession(req){
   }
   return current;
 }
-function requireUser(req,res,next){const s=session(req);if(!s)return res.status(401).json({ok:false,error:'login_required'});req.user=s;next();}
+async function requireUser(req,res,next){try{const s=await durableSession(req);if(!s)return res.status(401).json({ok:false,error:'login_required'});req.user=s;next()}catch(error){next(error)}}
 function requirePlatformAdmin(req,res,next){if(req.user?.role!=='platform_admin')return res.status(403).json({ok:false,error:'platform_admin_required'});next();}
 app.use('/api/swarm-power',createSwarmPowerRouter({db,session:durableSession}));
 app.use('/api/dialer',createDialerRouter({db,session:durableSession}));
