@@ -12,8 +12,9 @@ test('six distinct SEO pages render complete metadata and verified CTA paths',()
     assert.match(html,new RegExp(`<link rel="canonical" href="https://madedeck\\.com/${slug}">`));
     assert.match(html,/<meta name="description" content="[^\"]+">/);
     assert.match(html,/application\/ld\+json/);
-    assert.match(html,/"@type":"Service"/);
     assert.match(html,/"@type":"FAQPage"/);
+    assert.match(html,/"@type":"BreadcrumbList"/);
+    assert.match(html,page.product?/"@type":"Product"/:/"@type":"Service"/);
     assert.match(html,/class="seo-footer"/);
     assert.match(html,new RegExp(`href="${page.ctaHref.replace(/[?]/g,'\\?')}"`));
     assert.match(html,/viewport/);
@@ -27,6 +28,8 @@ test('public marketing facts match the checkout catalog',()=>{
   assert.equal(pages['custom-hats'].starting,'Starting at $27');
   assert.match(pages['custom-stickers'].starting,/5×4/);
   assert.doesNotMatch(pages['custom-stickers'].starting,/5×7/);
+  assert.equal(pages['custom-stickers'].product.lowPrice,'45.00');
+  assert.equal(pages['custom-stickers'].product.highPrice,'70.00');
 });
 
 test('physical checkout migration stores a verified Stripe shipping destination',()=>{

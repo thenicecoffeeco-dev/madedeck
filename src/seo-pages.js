@@ -8,7 +8,7 @@ const pages={
     title:'Custom T-Shirts | Design, Print and Sell Your Own | MadeDeck',
     description:'Design custom t-shirts, preview your artwork, order one or publish products to your MadeDeck store. No minimum order.',
     eyebrow:'CUSTOM T-SHIRTS',headline:'Your ideas wear better here.',lede:'Create custom t-shirts for your brand, business, team, event, or personal project. Preview the design before ordering or publishing it to your store.',
-    image:'/seo-assets/custom-t-shirts.webp',cta:'Start designing',ctaHref:'/?product=tee#designer',secondary:'See shirt options',starting:'Starting at $18',
+    image:'/seo-assets/custom-t-shirts.webp',cta:'Start designing',ctaHref:'/?product=tee#designer',secondary:'See shirt options',starting:'Starting at $18',product:{name:'MadeDeck Custom T-Shirt',sku:'tee',price:'18.00'},
     benefits:['No minimum order','Human artwork review before production','Multiple garment colors and sizes','Order directly or publish to your store'],
     uses:['Businesses','Events','Schools and teams','Creators and merch'],
     faqs:[['Is there a minimum order?','No. You can order one shirt or build a larger order.'],['What artwork files work best?','High-resolution PNG and vector artwork generally produce the strongest results.'],['Can I sell shirts through my store?','Yes. Save the product, publish it to your storefront, and share the product or store link.'],['How long does production take?','Timing depends on the garment, decoration method, quantity, and destination. The current estimate is shown during ordering.']]
@@ -16,21 +16,21 @@ const pages={
   'custom-hoodies':{
     title:'Custom Hoodies | Design and Sell Branded Hoodies | MadeDeck',description:'Create custom hoodies with realistic previews, flexible quantities, and an option to publish products to your MadeDeck store.',
     eyebrow:'CUSTOM HOODIES',headline:'More than a hoodie. Make it yours.',lede:'Build custom hoodies for brands, teams, schools, events, and creators. Choose a style, add artwork, preview it, then order or publish.',
-    image:'/seo-assets/custom-hoodies.webp',cta:'Start designing',ctaHref:'/?product=hoodie#designer',secondary:'See hoodie styles',starting:'Starting at $26',
+    image:'/seo-assets/custom-hoodies.webp',cta:'Start designing',ctaHref:'/?product=hoodie#designer',secondary:'See hoodie styles',starting:'Starting at $26',product:{name:'MadeDeck Custom Pullover Hoodie',sku:'hoodie',price:'26.00'},
     benefits:['Pullover and premium blank options','Front, back, and sleeve decoration support','Sizes and color choices vary by garment','Order directly or publish to your store'],uses:['Businesses','Events','Schools and teams','Creators and merch'],
     faqs:[['Can I order one hoodie?','Yes. MadeDeck supports one-off orders as well as larger quantities.'],['What sizes are available?','Sizes depend on the selected blank. Available choices appear with the product.'],['Can I preview the design?','Yes. The Studio provides a visual preview before you save or order.'],['Can customers buy from my store?','Published products can be offered through your MadeDeck storefront.']]
   },
   'custom-hats':{
     title:'Custom Hats | Embroidered and Printed Hats | MadeDeck',description:'Design custom hats for brands, teams, events, schools, and merchandise stores with preview and storefront options.',
     eyebrow:'CUSTOM HATS',headline:'Wear your ideas.',lede:'Create custom hats for a brand, team, event, or creator store. Pick a style, place your artwork, review the result, and choose whether to order or publish.',
-    image:'/seo-assets/custom-hats.webp',cta:'Start designing',ctaHref:'/?product=hat#designer',secondary:'See hat styles',starting:'Starting at $27',
+    image:'/seo-assets/custom-hats.webp',cta:'Start designing',ctaHref:'/?product=hat#designer',secondary:'See hat styles',starting:'Starting at $27',product:{name:'MadeDeck Custom Premium Snapback',sku:'hat',price:'27.00'},
     benefits:['Multiple hat shapes and color options','Embroidery and supported decoration methods','Artwork reviewed before production','Designed for orders and storefront products'],uses:['Businesses','Events','Schools and teams','Creators and merch'],
     faqs:[['What hat styles are available?','Available styles may include snapbacks, trucker hats, dad hats, five-panel hats, beanies, and flexible-fit options.'],['Is there a minimum order?','No minimum is required for supported styles.'],['Can a hat be added to my store?','Yes. Save and publish an eligible hat product to your storefront.'],['How is pricing calculated?','Final pricing depends on the blank, decoration method, artwork, and quantity.']]
   },
   'custom-stickers':{
     title:'Custom Stickers and Labels | Small Packs and Bulk Runs | MadeDeck',description:'Create square custom stickers and labels for products, packaging, promotions, events, and merchandise.',
     eyebrow:'CUSTOM STICKERS',headline:'Stick it. Brand it. Share it.',lede:'Turn artwork into custom square stickers and labels for product packaging, giveaways, events, and everyday promotion.',
-    image:'/seo-assets/custom-stickers.webp',cta:'Start designing',ctaHref:'/?product=sticker2#designer',secondary:'See sticker sizes',starting:'2×2, 3×3, and 5×4',
+    image:'/seo-assets/custom-stickers.webp',cta:'Start designing',ctaHref:'/?product=sticker2#designer',secondary:'See sticker sizes',starting:'2×2, 3×3, and 5×4',product:{name:'MadeDeck Custom Stickers and Labels',sku:'stickers-labels',lowPrice:'45.00',highPrice:'70.00',offerCount:3},
     benefits:['Single samples and supported pack quantities','Durable vinyl options','Useful for labels, gifts, packaging, and promotion','Artwork preview before ordering'],uses:['Product businesses','Events','Schools and teams','Creators and merch'],
     faqs:[['What sticker sizes are offered?','The current catalog includes 2×2 and 3×3 square stickers plus 5×4 labels.'],['Can I order packs?','The current sticker and label products are sold in 200-piece packs.'],['Can I upload my own logo?','Yes. Upload your artwork in Studio and review the placement before ordering.'],['When will my stickers ship?','The order flow shows the current production and delivery estimate for the selected option.']]
   },
@@ -51,7 +51,23 @@ const pages={
 };
 
 const navLinks=Object.keys(pages).map(slug=>`<a href="/${slug}">${escapeHtml(pages[slug].eyebrow.replace('CUSTOM ','').replace('PRINT ON DEMAND FOR ','POD FOR '))}</a>`).join('');
-const schema=(slug,page)=>JSON.stringify({'@context':'https://schema.org','@graph':[{'@type':'WebPage','@id':`${SITE}/${slug}#webpage`,name:page.title,description:page.description,url:`${SITE}/${slug}`,primaryImageOfPage:{'@id':`${SITE}/${slug}#primaryimage`},mainEntity:{'@id':`${SITE}/${slug}#service`}},{'@type':'ImageObject','@id':`${SITE}/${slug}#primaryimage`,contentUrl:`${SITE}${page.image}`,caption:`MadeDeck ${page.eyebrow.toLowerCase()} page concept and product examples`},{'@type':'Service','@id':`${SITE}/${slug}#service`,name:page.eyebrow,description:page.description,provider:{'@type':'Organization',name:'MadeDeck',url:SITE},areaServed:['US','CA'],url:`${SITE}/${slug}`},{'@type':'FAQPage','@id':`${SITE}/${slug}#faq`,mainEntity:page.faqs.map(([q,a])=>({'@type':'Question',name:q,acceptedAnswer:{'@type':'Answer',text:a}}))}]});
+const schema=(slug,page)=>{
+  const canonical=`${SITE}/${slug}`;
+  const primaryEntity=page.product?`${canonical}#product`:`${canonical}#service`;
+  const graph=[
+    {'@type':'WebPage','@id':`${canonical}#webpage`,name:page.title,description:page.description,url:canonical,primaryImageOfPage:{'@id':`${canonical}#primaryimage`},mainEntity:{'@id':primaryEntity}},
+    {'@type':'ImageObject','@id':`${canonical}#primaryimage`,contentUrl:`${SITE}${page.image}`,caption:`MadeDeck ${page.eyebrow.toLowerCase()} page concept and product examples`},
+    {'@type':'BreadcrumbList','@id':`${canonical}#breadcrumb`,itemListElement:[{'@type':'ListItem',position:1,name:'MadeDeck',item:`${SITE}/`},{'@type':'ListItem',position:2,name:page.eyebrow,item:canonical}]},
+    {'@type':'FAQPage','@id':`${canonical}#faq`,mainEntity:page.faqs.map(([q,a])=>({'@type':'Question',name:q,acceptedAnswer:{'@type':'Answer',text:a}}))}
+  ];
+  if(page.product){
+    const offers=page.product.price
+      ?{'@type':'Offer',url:canonical,priceCurrency:'USD',price:page.product.price,availability:'https://schema.org/InStock',itemCondition:'https://schema.org/NewCondition'}
+      :{'@type':'AggregateOffer',url:canonical,priceCurrency:'USD',lowPrice:page.product.lowPrice,highPrice:page.product.highPrice,offerCount:page.product.offerCount};
+    graph.push({'@type':'Product','@id':primaryEntity,name:page.product.name,description:page.description,sku:page.product.sku,image:`${SITE}${page.image}`,brand:{'@type':'Brand',name:'MadeDeck'},offers});
+  }else graph.push({'@type':'Service','@id':primaryEntity,name:page.eyebrow,description:page.description,provider:{'@type':'Organization',name:'MadeDeck',url:SITE},areaServed:['US','CA'],url:canonical});
+  return JSON.stringify({'@context':'https://schema.org','@graph':graph});
+};
 
 function renderSeoPage(slug){
   const page=pages[slug];if(!page)return null;
