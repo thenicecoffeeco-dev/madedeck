@@ -16,9 +16,10 @@ const {validStoreId,canAccessStore,listOffers}=require('./store-access');
 const {createWorkspaceRouter}=require('./workspace-routes');
 const {createOperationsRouter}=require('./operations-routes');
 const {createStorefrontRouter}=require('./storefront-routes');
+const {pages:seoPages,policies:policyPages,renderSeoPage,renderPolicyPage}=require('./seo-pages');
 const app=express();
 const publicDir=path.join(__dirname,'../public');
-const APP_VERSION='0.12.1';
+const APP_VERSION='0.13.0';
 let migrationState={mode:'not_checked',ready:false,migrations:[]};
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
 
@@ -106,6 +107,17 @@ async function recordStripeEvent(event,status='received',errorText=null){
 async function processStripeEvent(event){
   const obj=event.data?.object||{};
   const commerceResult=await processCommerceEvent(event,obj);if(commerceResult)return commerceResult;
+  if(event.type==='checkout.session.completed'&&obj.metadata?.madedeck_account_id&&obj.metadata?.madedeck_user_id){
+    const shipping=obj.collected_information?.shipping_details||obj.shipping_details||null;
+    const address=shipping?.address||null;
+    if(address?.line1&&address?.city&&address?.postal_code&&address?.country){
+      await db().execute(
+        `INSERT INTO checkout_shipping_addresses(stripe_checkout_session_id,account_id,user_id,recipient_name,phone,line1,line2,city,state,postal_code,country)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE recipient_name=VALUES(recipient_name),phone=VALUES(phone),line1=VALUES(line1),line2=VALUES(line2),city=VALUES(city),state=VALUES(state),postal_code=VALUES(postal_code),country=VALUES(country)`,
+        [String(obj.id),Number(obj.metadata.madedeck_account_id),Number(obj.metadata.madedeck_user_id),shipping.name||obj.customer_details?.name||null,obj.customer_details?.phone||null,address.line1,address.line2||null,address.city,address.state||null,address.postal_code,String(address.country).toUpperCase()]
+      );
+    }
+  }
   const orderId=stripeOrderId(obj);
   const paymentIntentId=obj.payment_intent||obj.id||null;
 
@@ -212,6 +224,20 @@ app.get('/api/assets/status',(req,res)=>{
 });
 app.use('/mockups',express.static(mockupDir,assetStaticOptions));
 app.use('/premades',express.static(premadeDir,assetStaticOptions));
+app.get('/robots.txt',(req,res)=>res.type('text').send(`User-agent: *\nAllow: /\nDisallow: /member-account.html\nDisallow: /private/\nDisallow: /api/\nSitemap: https://madedeck.com/sitemap.xml\n`));
+app.get('/sitemap.xml',(req,res)=>{
+  const paths=['',...Object.keys(seoPages),...Object.keys(policyPages)];
+  const urls=paths.map(item=>`<url><loc>https://madedeck.com/${item}</loc><changefreq>${item?'monthly':'weekly'}</changefreq><priority>${item?'.8':'1.0'}</priority></url>`).join('');
+  res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
+});
+Object.keys(seoPages).forEach(slug=>app.get(`/${slug}`,(req,res)=>{
+  res.set('Cache-Control','public, max-age=300, stale-while-revalidate=86400');
+  res.type('html').send(renderSeoPage(slug));
+}));
+Object.keys(policyPages).forEach(slug=>app.get(`/${slug}`,(req,res)=>{
+  res.set('Cache-Control','public, max-age=300, stale-while-revalidate=86400');
+  res.type('html').send(renderPolicyPage(slug));
+}));
 app.get('/',(req,res)=>{
   try{
     const html=fs.readFileSync(path.join(publicDir,'index.html'),'utf8')
@@ -415,6 +441,9 @@ app.post('/api/checkout/session',tenantAccess.resolve,tenantAccess.authenticated
       const origin=`${req.protocol}://${req.get('host')}`;
       const checkout=await stripe.checkout.sessions.create({
         mode:'payment',
+        // Every catalog item in this route is fulfilled physically. Let Stripe collect
+        // the shipping destination rather than accepting an unverified client address.
+        shipping_address_collection:{allowed_countries:['US','CA']},
         customer_email:req.body?.customer?.email||req.authContext.email||undefined,
         line_items:priced.map(({item,price})=>({quantity:Math.max(1,Math.min(500,Number(item.quantity)||1)),price_data:{currency:'usd',unit_amount:price.amount,product_data:{name:price.name,metadata:{product_key:String(item.productId),variant:String(item.variant||''),method:String(item.method||'')}}}})),
         metadata:{madedeck_account_id:String(req.authContext.accountId),madedeck_user_id:String(req.authContext.userId),madedeck_session_key:String(req.authContext.sessionKey||'')},
