@@ -1,5 +1,5 @@
 -- Additive tenant-owned design and saved-product workspaces.
--- No foreign keys: legacy GoDaddy schemas use mixed integer definitions.
+-- Constraints are intentionally omitted because legacy GoDaddy schemas use mixed integer definitions.
 CREATE TABLE IF NOT EXISTS tenant_designs (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   design_key VARCHAR(100) NOT NULL,

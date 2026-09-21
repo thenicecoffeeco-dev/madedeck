@@ -17,7 +17,9 @@ const MIGRATIONS=Object.freeze([
   '010_saas_owner_command_center.sql',
   '011_account_connection_backbone.sql',
   '012_high_integrity_identity_access.sql',
-  '013_tenant_design_product_workspaces.sql'
+  '013_tenant_design_product_workspaces.sql',
+  '014_account_commerce_ledger.sql',
+  '015_checkout_shipping_addresses.sql'
 ]);
 
 function checksum(text){return crypto.createHash('sha256').update(text).digest('hex');}

@@ -14,7 +14,7 @@ test('ignores block comments and preserves backticks',()=>{
 
 test('migration order is explicit and foundation first',()=>{
   assert.equal(MIGRATIONS[0],'002_saas_foundation.sql');
-  assert.equal(MIGRATIONS.at(-1),'012_high_integrity_identity_access.sql');
+  assert.equal(MIGRATIONS.at(-1),'015_checkout_shipping_addresses.sql');
 });
 
 test('checksums are stable',()=>{
